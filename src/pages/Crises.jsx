@@ -351,6 +351,7 @@ const Crises = () => {
           </div>
         </motion.div>
 
+        {/*
         {crises.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
@@ -545,11 +546,29 @@ const Crises = () => {
                   >
                     View Full Details
                   </button>
-                </div> */}
+                </div> *
               </motion.div>
             ))}
           </div>
-        )}
+        )}*/}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="card glass"
+          style={{
+            padding: "3rem",
+            textAlign: "center",
+            color: "var(--text-secondary)",
+          }}
+        >
+          <FiAlertTriangle
+            style={{ fontSize: "3rem", marginBottom: "1rem", opacity: 0.5 }}
+          />
+          <h3>Crises are currently being improved behind the scene</h3>
+          <p>
+            Please come back around 24 hours.
+          </p>
+        </motion.div>
 
         {/* Crisis Intelligence Section */}
         <motion.div

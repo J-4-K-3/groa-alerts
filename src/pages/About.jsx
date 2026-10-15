@@ -66,6 +66,61 @@ const About = () => {
             className="text-gradient"
             style={{ fontSize: "2.5rem", marginBottom: "1.5rem" }}
           >
+            About G.R.O.A
+          </motion.h1>
+          <motion.p
+            variants={itemVariants}
+            style={{
+              fontSize: "1.25rem",
+              color: "var(--text-secondary)",
+              maxWidth: "700px",
+              margin: "0 auto",
+            }}
+          >
+            G.R.O.A is a free, open platform designed to provide timely information on global crises, risks and relief efforts. It connects people with real-world organizations and communities, offering verified updates and situational awareness without barriers.
+          </motion.p>
+
+          <motion.p
+            variants={itemVariants}
+            style={{
+              fontSize: "1.25rem",
+              color: "var(--text-secondary)",
+              maxWidth: "700px",
+              margin: "0 auto",
+              marginTop: 80
+            }}
+          >
+            Ownership & Development:
+            G.R.O.A is owned, developed and funded by Innoxation Tech Inc, a technology company building diverse platforms for social connection, app distribution and global safety. We are growing and committed to transparency, accessibility and community empowerment.
+          </motion.p>
+
+          <motion.p
+            variants={itemVariants}
+            style={{
+              fontSize: "1.25rem",
+              color: "var(--text-secondary)",
+              maxWidth: "700px",
+              margin: "0 auto",
+              marginTop: 80
+            }}
+          >
+            How It Works:
+            There are no accounts, no payments, and no barriers. Simply visit the platform, explore the information you need, send notes if you wish, report issues and leave. It’s free, convenient and designed to give you more insight with less friction.
+          </motion.p>
+        </section>
+
+        <section
+          style={{
+            textAlign: "center",
+            marginBottom: "3rem",
+            marginTop: "2rem",
+          }}
+        >
+          <motion.h1
+            variants={itemVariants}
+            className="text-gradient"
+            style={{ fontSize: "2.5rem", marginBottom: "1.5rem" }}
+          >
             The Science of Safety
           </motion.h1>
           <motion.p
@@ -143,7 +198,7 @@ const About = () => {
                   text: "Decentralized reporting nodes",
                 },
               ].map((li, i) => (
-            <li
+                <li
                   key={i}
                   className="about-engine-li"
                 >
@@ -229,7 +284,21 @@ const About = () => {
           </motion.div>
         </div>
 
-        {/*<section style={{ textAlign: "center" }}>
+        <motion.p
+          variants={itemVariants}
+          style={{
+            fontSize: "1.25rem",
+            color: "var(--text-secondary)",
+            maxWidth: "700px",
+            margin: "0 auto",
+            marginBottom: 30
+          }}
+        >
+          Get Involved:
+          Users can contact Innoxation Tech Inc through the footer information for support, data requests or to suggest new features they’d like to see in G.R.O.A. Your feedback helps us grow and serve communities better.
+        </motion.p>
+
+        <section style={{ textAlign: "center" }}>
           <h2 className="section-title" style={{ justifyContent: "center" }}>
             Connect with Us
           </h2>
@@ -252,7 +321,7 @@ const About = () => {
               </p>
             </div>
           </div>
-        </section>*/}
+        </section>
       </div>
     </motion.div>
   );

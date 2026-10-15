@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { NavLink, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { FiMenu } from "react-icons/fi";
+import { FiX } from "react-icons/fi";
 import logo from "../assets/logo.svg";
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
-  const [showOwnershipModal, setShowOwnershipModal] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isDangerModal, setIsDangerModal] = useState(false)
+  const [isWarningModal, setIsWarningModal] = useState(false)
+  const [isSafeModal, setIsSaferModal] = useState(false)
   const [isMobile, setIsMobile] = useState(false);
 
   const toggleMobileMenu = () => {
@@ -41,7 +43,7 @@ const Header = () => {
     { path: "/alerts", label: "Alerts" },
     { path: "/regions", label: "Regions" },
     { path: "/crises", label: "Crises" },
-    { path: "/aid-relief", label: "Aid & Relief" },
+    { path: "/news", label: "News" },
     { path: "/about", label: "About" },
   ];
 
@@ -62,7 +64,6 @@ const Header = () => {
         }}
       >
         <div className="header-container logo-container"
-          onClick={() => setShowOwnershipModal(true)}
           style={{
             display: "flex",
             alignItems: "center",
@@ -70,7 +71,7 @@ const Header = () => {
             cursor: "pointer",
           }}
         >
-            <button 
+          <button
             className={`hamburger ${isMobileMenuOpen ? 'open' : ''}`}
             onClick={(e) => {
               e.stopPropagation();
@@ -145,8 +146,8 @@ const Header = () => {
                   zIndex: 1000,
                 }}
               >
-                <div style={{padding: "1.5rem", height: "100%", display: "flex", flexDirection: "column"}}>
-                  <button 
+                <div style={{ padding: "1.5rem", height: "100%", display: "flex", flexDirection: "column" }}>
+                  <button
                     onClick={closeMobileMenu}
                     style={{
                       alignSelf: "flex-end",
@@ -189,7 +190,7 @@ const Header = () => {
           <ul className="nav-list" style={{ gap: "2rem" }}>
             {navItems.map((item) => (
               <li key={item.path} className="nav-item">
-              <NavLink
+                <NavLink
                   to={item.path}
                   className={({ isActive }) => (isActive ? "active" : "")}
                   onClick={closeMobileMenu}
@@ -202,235 +203,103 @@ const Header = () => {
         </nav>
 
         <div className="report-btn-container">
-          <Link to="/submit-report">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              style={{
-                background: "linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)",
-                border: "none",
-                color: "white",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.6rem 1.2rem",
-                fontSize: "0.9rem",
-              }}
+          <div className="danger-levels">
+            <button
+              //onClick={() => setIsSaferModal(true)} 
+              className="warning-btn-level green"
             >
-              Report Emergency
-            </motion.button>
-          </Link>
+              🟢
+            </button>
+            <button
+              //onClick={() => setIsWarningModal(true)} 
+              className="warning-btn-level yellow"
+            >
+              🟡
+            </button>
+            <button
+              //onClick={() => setIsDangerModal(true)} 
+              className="warning-btn-level red"
+            >
+              🔴
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Ownership Modal */}
+      {/* Danger Modal */}
       <AnimatePresence>
-        {showOwnershipModal && (
+        {isDangerModal && (
           <motion.div
+            className="threat-info-card"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: "rgba(0, 0, 0, 0.8)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-              padding: "1rem",
-            }}
-            onClick={() => setShowOwnershipModal(false)}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              style={{
-                background: "var(--bg-primary)",
-                borderRadius: "1rem",
-                padding: "2rem",
-                maxWidth: "500px",
-                width: "100%",
-                maxHeight: "80vh",
-                overflow: "auto",
-                border: "1px solid var(--border-color)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: "1.5rem",
-                }}
-              >
-                <h3
+            <div className="threat-info">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <h4 className="threat-level-danger">🔴</h4>
+                <FiX
+                  onClick={() => setIsDangerModal(false)}
                   style={{
-                    fontSize: "1.25rem",
-                    margin: 0,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
+                    cursor: 'pointer'
                   }}
-                >
-                  G.R.O.A
-                </h3>
-                <button
-                  onClick={() => setShowOwnershipModal(false)}
-                  style={{
-                    background: "none",
-                    border: "none",
-                    color: "var(--text-secondary)",
-                    fontSize: "1.5rem",
-                    cursor: "pointer",
-                    padding: "0.25rem",
-                    borderRadius: "0.25rem",
-                  }}
-                  onMouseOver={(e) =>
-                    (e.target.style.background = "rgba(255,255,255,0.1)")
-                  }
-                  onMouseOut={(e) => (e.target.style.background = "none")}
-                >
-                  ×
-                </button>
+                  size={16}
+                />
               </div>
+              <h3>Danger/Threat Alerts & Level</h3>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "1rem",
-                }}
-              >
-                <div>
-                  <h4 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>
-                    About G.R.O.A
-                  </h4>
-                  <p
-                    style={{
-                      fontSize: "0.9rem",
-                      color: "var(--text-secondary)",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    G.R.O.A is a free, open
-                    platform designed to provide timely information on global
-                    crises, risks and relief efforts. It connects people with
-                    real-world organizations and communities, offering verified
-                    updates and situational awareness without barriers
-                  </p>
-                </div>
-
-                <div>
-                  <h4 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>
-                    Ownership & Development
-                  </h4>
-                  <p
-                    style={{
-                      fontSize: "0.9rem",
-                      color: "var(--text-secondary)",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    G.R.O.A is owned and developed by Innoxation Tech Inc, a
-                    technology company building diverse platforms for social
-                    connection, app distribution and global safety. We are new,
-                    growing and committed to transparency, accessibility and
-                    community empowerment
-                  </p>
-                </div>
-
-                <div>
-                  <h4 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>
-                    How It Works
-                  </h4>
-                  <p
-                    style={{
-                      fontSize: "0.9rem",
-                      color: "var(--text-secondary)",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    There are no accounts, no payments, and no barriers. Simply
-                    visit the platform, explore the information you need, send
-                    notes if you wish, report issues and leave. It’s free,
-                    convenient and designed to give you more insight with less
-                    friction
-                  </p>
-                </div>
-
-                <div>
-                  <h4 style={{ fontSize: "1rem", marginBottom: "0.5rem" }}>
-                    Get Involved
-                  </h4>
-                  <p
-                    style={{
-                      fontSize: "0.9rem",
-                      color: "var(--text-secondary)",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    Users can contact Innoxation Tech Inc through the footer
-                    information for support, data requests or to suggest new
-                    features they’d like to see in G.R.O.A. Your feedback helps
-                    us grow and serve communities better
-                  </p>
-                </div>
-
-                <div
+      {/* Warning Modal */}
+      <AnimatePresence>
+        {isWarningModal && (
+          <motion.div
+            className="threat-info-card"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="threat-info">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <h4 className="threat-level-warning">🟡</h4>
+                <FiX
+                  onClick={() => setIsWarningModal(false)}
                   style={{
-                    display: "flex",
-                    gap: "0.5rem",
-                    marginTop: "1rem",
+                    cursor: 'pointer'
                   }}
-                >
-                  <Link to="/" style={{ flex: 1 }}>
-                    <button
-                      style={{
-                        width: "100%",
-                        padding: "0.75rem",
-                        fontSize: "0.9rem",
-                        background: "var(--accent-color)",
-                        border: "none",
-                        borderRadius: "0.5rem",
-                        color: "white",
-                        cursor: "pointer",
-                      }}
-                      onMouseOver={(e) => (e.target.style.opacity = "0.9")}
-                      onMouseOut={(e) => (e.target.style.opacity = "1")}
-                      onClick={() => setShowOwnershipModal(false)}
-                    >
-                      Go to Homepage
-                    </button>
-                  </Link>
-                  <button
-                    onClick={() => setShowOwnershipModal(false)}
-                    style={{
-                      padding: "0.75rem",
-                      fontSize: "0.9rem",
-                      background: "rgba(255,255,255,0.1)",
-                      border: "1px solid var(--border-color)",
-                      borderRadius: "0.5rem",
-                      color: "var(--text-primary)",
-                      cursor: "pointer",
-                    }}
-                    onMouseOver={(e) =>
-                      (e.target.style.background = "rgba(255,255,255,0.2)")
-                    }
-                    onMouseOut={(e) =>
-                      (e.target.style.background = "rgba(255,255,255,0.1)")
-                    }
-                  >
-                    Close
-                  </button>
-                </div>
+                  size={16}
+                />
               </div>
-            </motion.div>
+              <h3>Warning/Caution Alerts & Level</h3>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Safe Modal */}
+      <AnimatePresence>
+        {isSafeModal && (
+          <motion.div
+            className="threat-info-card"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <div className="threat-info">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                <h4 className="threat-level-safe">🟢</h4>
+                <FiX
+                  onClick={() => setIsSaferModal(false)}
+                  style={{
+                    cursor: 'pointer'
+                  }}
+                  size={16}
+                />
+              </div>
+              <h3>Safe/info Alerts & Level</h3>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

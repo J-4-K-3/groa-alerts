@@ -33,6 +33,7 @@ import {
   geocodeOpenMeteo,
 } from "../lib/fetchApi";
 import { motion } from "framer-motion";
+import TelvinPopup from "../components/popups/TelvinPopup";
 
 const Home = () => {
   const [showSOSModal, setShowSOSModal] = useState(false);
@@ -49,6 +50,21 @@ const Home = () => {
   const [isSearchingLocation, setIsSearchingLocation] = useState(false);
   const [nearbyEvents, setNearbyEvents] = useState([]);
   const [coords, setCoords] = useState(null);
+  const [riskCarouselIndex, setRiskCarouselIndex] = useState(0);
+  const [touchStartX, setTouchStartX] = useState(null);
+  const [telvinPopupOpen, setTelvinPopupOpen] = useState(false);
+  const [showDevNotice, setShowDevNotice] = useState(false);
+  const [personalHealth, setPersonalHealth] = useState({
+    conditions: [],
+    medications: false,
+    mobility: "full",
+    allergies: [],
+    lastCheckup: null,
+    stressLevel: "moderate",
+    sleepQuality: "good",
+    hydration: "adequate",
+  });
+  const [healthCheckComplete, setHealthCheckComplete] = useState(false);
 
   // Enhanced state for all data sources
   const [allExternalData, setAllExternalData] = useState({
@@ -62,6 +78,351 @@ const Home = () => {
   const [localWeather, setLocalWeather] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
 
+  const hasLocationAssessment = Boolean(userLocation && coords);
+
+  const healthCheck = useMemo(() => {
+    if (!riskAssessment) {
+      return null;
+    }
+
+    const scoreMap = {
+      MINIMAL: 1,
+      LOW: 2,
+      ELEVATED: 3,
+      HIGH: 4,
+      CRITICAL: 5,
+    };
+    const riskScore = scoreMap[riskAssessment.level] || 0;
+    const temperature = localWeather?.temperature ?? 22;
+    const readiness =
+      riskScore >= 4 ? "High" : riskScore >= 3 ? "Moderate" : "Good";
+    const climateStatus =
+      temperature > 30
+        ? "Heat stress risk"
+        : temperature < 5
+          ? "Cold exposure risk"
+          : "Climate conditions stable";
+
+    return {
+      readiness,
+      climateStatus,
+      hydration:
+        temperature > 30
+          ? "Increase hydration and cooling breaks"
+          : temperature < 5
+            ? "Prepare warm layers and shelter"
+            : "Hydration and rest remain manageable",
+      score: riskScore,
+      note:
+        riskScore >= 4
+          ? "You should keep emergency plans close and avoid unnecessary exposure."
+          : riskScore >= 3
+            ? "Stay alert and keep emergency essentials ready."
+            : "Your current conditions look manageable, but continued awareness is wise.",
+    };
+  }, [localWeather, riskAssessment]);
+
+  const aiSummary = useMemo(() => {
+    if (!riskAssessment || !userLocation) {
+      return null;
+    }
+
+    return {
+      headline: `${userLocation} is showing ${riskAssessment.level.toLowerCase()} risk conditions.`,
+      body: `Safety is ${riskAssessment.level.toLowerCase()} with ${nearbyEvents.length || 0} nearby event signals and a ${healthCheck?.readiness.toLowerCase() || "stable"} health outlook.`,
+      recommendation:
+        riskAssessment.level === "CRITICAL"
+          ? "Move to a secure shelter and contact local emergency services immediately."
+          : riskAssessment.level === "HIGH"
+            ? "Keep a ready-to-go safety plan and monitor the area closely."
+            : riskAssessment.level === "ELEVATED"
+              ? "Maintain awareness, prepare essentials, and check updates often."
+              : "Stay prepared and keep monitoring regional developments.",
+    };
+  }, [healthCheck, nearbyEvents.length, riskAssessment, userLocation]);
+
+  const changeRiskPanel = useCallback((direction) => {
+    setRiskCarouselIndex((current) => {
+      const nextIndex = current + direction;
+      return Math.max(0, Math.min(nextIndex, 2));
+    });
+  }, []);
+
+  const handlePersonalHealthChange = useCallback((field, value) => {
+    setPersonalHealth((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handleHealthConditionToggle = useCallback((condition) => {
+    setPersonalHealth((prev) => ({
+      ...prev,
+      conditions: prev.conditions.includes(condition)
+        ? prev.conditions.filter((c) => c !== condition)
+        : [...prev.conditions, condition],
+    }));
+  }, []);
+
+  const handleAllergyToggle = useCallback((allergy) => {
+    setPersonalHealth((prev) => ({
+      ...prev,
+      allergies: prev.allergies.includes(allergy)
+        ? prev.allergies.filter((a) => a !== allergy)
+        : [...prev.allergies, allergy],
+    }));
+  }, []);
+
+  const completeHealthCheck = useCallback(() => {
+    setHealthCheckComplete(true);
+  }, []);
+
+  const resetHealthCheck = useCallback(() => {
+    setPersonalHealth({
+      conditions: [],
+      medications: false,
+      mobility: "full",
+      allergies: [],
+      lastCheckup: null,
+      stressLevel: "moderate",
+      sleepQuality: "good",
+      hydration: "adequate",
+    });
+    setHealthCheckComplete(false);
+  }, []);
+
+  const getPersonalHealthGuidance = useMemo(() => {
+    if (!healthCheckComplete) return null;
+
+    const guidance = {
+      riskLevel: "LOW",
+      immediateActions: [],
+      precautions: [],
+      seekCare: false,
+      whereToGo: "",
+      whatToDo: [],
+    };
+
+    // Assess based on conditions
+    const highRiskConditions = [
+      "heart",
+      "diabetes",
+      "respiratory",
+      "immune",
+      "cancer",
+      "stroke",
+      "kidney",
+      "liver",
+    ];
+    const hasHighRiskCondition = personalHealth.conditions.some((c) =>
+      highRiskConditions.some((hrc) => c.toLowerCase().includes(hrc)),
+    );
+
+    // Assess mobility
+    const mobilityRisk = personalHealth.mobility === "limited" ? 2 : personalHealth.mobility === "assisted" ? 3 : 0;
+
+    // Assess medications
+    const medicationRisk = personalHealth.medications ? 1 : 0;
+
+    // Assess stress and sleep
+    const stressRisk = personalHealth.stressLevel === "high" ? 2 : personalHealth.stressLevel === "moderate" ? 1 : 0;
+    const sleepRisk = personalHealth.sleepQuality === "poor" ? 2 : personalHealth.sleepQuality === "fair" ? 1 : 0;
+
+    // Assess hydration
+    const hydrationRisk = personalHealth.hydration === "low" ? 2 : personalHealth.hydration === "moderate" ? 1 : 0;
+
+    const totalRisk = mobilityRisk + medicationRisk + stressRisk + sleepRisk + hydrationRisk + (hasHighRiskCondition ? 3 : 0);
+
+    if (totalRisk >= 6) {
+      guidance.riskLevel = "HIGH";
+      guidance.seekCare = true;
+      guidance.whereToGo = "Nearest emergency department or urgent care clinic";
+      guidance.immediateActions = [
+        "Contact your healthcare provider immediately",
+        "Ensure you have 7-day medication supply",
+        "Have emergency contacts readily available",
+        "Prepare a go-bag with medical documents",
+      ];
+      guidance.precautions = [
+        "Avoid strenuous activity",
+        "Monitor symptoms closely",
+        "Stay in climate-controlled environment",
+        "Keep communication device charged",
+      ];
+    } else if (totalRisk >= 3) {
+      guidance.riskLevel = "MODERATE";
+      guidance.seekCare = false;
+      guidance.whereToGo = "Primary care provider or telehealth consultation";
+      guidance.immediateActions = [
+        "Schedule check-up within 1 week",
+        "Refill prescriptions early",
+        "Set medication reminders",
+        "Track symptoms daily",
+      ];
+      guidance.precautions = [
+        "Maintain regular medication schedule",
+        "Prioritize sleep and stress management",
+        "Stay hydrated and eat balanced meals",
+        "Limit exposure to extreme temperatures",
+      ];
+    } else {
+      guidance.riskLevel = "LOW";
+      guidance.seekCare = false;
+      guidance.whereToGo = "Routine care with primary provider";
+      guidance.immediateActions = [
+        "Continue current health routines",
+        "Annual wellness check recommended",
+        "Stay up to date on vaccinations",
+      ];
+      guidance.precautions = [
+        "Maintain healthy lifestyle",
+        "Regular exercise as able",
+        "Balanced nutrition",
+        "Adequate sleep (7-9 hours)",
+      ];
+    }
+
+    // Add condition-specific guidance
+    if (personalHealth.conditions.length > 0) {
+      guidance.whatToDo.push(
+        `Manage ${personalHealth.conditions.join(", ")} with regular monitoring`,
+      );
+    }
+    if (personalHealth.medications) {
+      guidance.whatToDo.push("Take medications exactly as prescribed");
+    }
+    if (personalHealth.mobility !== "full") {
+      guidance.whatToDo.push("Plan for mobility needs during emergencies");
+      guidance.whereToGo += " (ensure accessibility)";
+    }
+    if (personalHealth.allergies.length > 0) {
+      guidance.whatToDo.push(
+        `Carry allergy medication (${personalHealth.allergies.join(", ")})`,
+      );
+      guidance.precautions.push("Wear medical alert identification");
+    }
+
+    return guidance;
+  }, [personalHealth, healthCheckComplete]);
+
+  const getAiActionPlan = useMemo(() => {
+    if (!riskAssessment || !userLocation) return [];
+
+    const actions = [];
+    const riskLevel = riskAssessment.level;
+
+    // Base actions by risk level
+    if (riskLevel === "CRITICAL") {
+      actions.push(
+        "Move to safe shelter immediately",
+        "Contact emergency services (911/112)",
+        "Activate emergency contacts",
+        "Grab go-bag with essentials",
+      );
+    } else if (riskLevel === "HIGH") {
+      actions.push(
+        "Review and prepare evacuation routes",
+        "Pack emergency kit (water, meds, documents)",
+        "Charge all devices and power banks",
+        "Monitor official alerts continuously",
+      );
+    } else if (riskLevel === "ELEVATED") {
+      actions.push(
+        "Check emergency supplies and restock",
+        "Identify nearest shelters and hospitals",
+        "Set up alert notifications",
+        "Discuss family emergency plan",
+      );
+    } else {
+      actions.push(
+        "Stay informed via trusted sources",
+        "Maintain basic preparedness kit",
+        "Review insurance coverage",
+        "Know your community resources",
+      );
+    }
+
+    // Add health-specific actions if health check complete
+    if (healthCheckComplete && getPersonalHealthGuidance) {
+      actions.push(...getPersonalHealthGuidance.immediateActions.slice(0, 2));
+    }
+
+    // Add weather-specific actions
+    if (localWeather) {
+      if (localWeather.temperature > 35) actions.push("Limit outdoor exposure during peak heat");
+      if (localWeather.temperature < 0) actions.push("Protect against cold exposure");
+      if (localWeather.windSpeed > 15) actions.push("Secure loose outdoor items");
+      if (localWeather.precipitation > 5) actions.push("Prepare for potential flooding");
+    }
+
+    return actions.slice(0, 6);
+  }, [riskAssessment, userLocation, healthCheckComplete, getPersonalHealthGuidance, localWeather]);
+
+  const getAiWhereToGo = useMemo(() => {
+    if (!riskAssessment || !userLocation) return [];
+
+    const places = [];
+    const riskLevel = riskAssessment.level;
+
+    if (riskLevel === "CRITICAL") {
+      places.push(
+        "Nearest emergency shelter or community center",
+        "Hospital emergency department",
+        "Local emergency management office",
+      );
+    } else if (riskLevel === "HIGH") {
+      places.push(
+        "Designated evacuation center (check local gov website)",
+        "Urgent care clinic for medical needs",
+        "Community emergency hub",
+      );
+    } else if (riskLevel === "ELEVATED") {
+      places.push(
+        "Local government emergency info page",
+        "Nearest pharmacy for supplies",
+        "Community center for updates",
+      );
+    } else {
+      places.push(
+        "City/county emergency management website",
+        "Ready.gov or FEMA app for planning",
+        "Local Red Cross chapter",
+      );
+    }
+
+    // Add health-specific places
+    if (healthCheckComplete && getPersonalHealthGuidance) {
+      if (getPersonalHealthGuidance.seekCare) {
+        places.unshift("Emergency department or urgent care");
+      } else {
+        places.unshift(getPersonalHealthGuidance.whereToGo);
+      }
+    }
+
+    return [...new Set(places)].slice(0, 5);
+  }, [riskAssessment, userLocation, healthCheckComplete, getPersonalHealthGuidance]);
+
+  const handleTouchStart = useCallback((event) => {
+    setTouchStartX(event.touches[0].clientX);
+  }, []);
+
+  const handleTouchEnd = useCallback(
+    (event) => {
+      if (touchStartX === null) return;
+
+      const touchEndX = event.changedTouches[0].clientX;
+      const diff = touchStartX - touchEndX;
+
+      if (Math.abs(diff) > 40) {
+        if (diff > 0) {
+          changeRiskPanel(1);
+        } else {
+          changeRiskPanel(-1);
+        }
+      }
+
+      setTouchStartX(null);
+    },
+    [changeRiskPanel, touchStartX],
+  );
+
   const OPENWEATHER_API_KEY = import.meta.env.VITE_OPENWEATHER_API_KEY;
 
   // Haversine formula to calculate great-circle distance between two points
@@ -73,9 +434,9 @@ const Home = () => {
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }, []);
@@ -331,11 +692,11 @@ const Home = () => {
         advice,
         weatherInfo: localWeather
           ? {
-              temp: localWeather.temperature,
-              condition: localWeather.weather || localWeather.description,
-              wind: localWeather.windSpeed,
-              humidity: localWeather.humidity,
-            }
+            temp: localWeather.temperature,
+            condition: localWeather.weather || localWeather.description,
+            wind: localWeather.windSpeed,
+            humidity: localWeather.humidity,
+          }
           : null,
         stats: {
           immediate: immediateThreats.length,
@@ -431,12 +792,12 @@ const Home = () => {
             ),
           );
         } else {
-          setLocationError("Location not found. Please try again.");
+          setLocationError("Location not found. Try a city or country name.");
         }
       }
-    } catch (err) {
-      console.error("Geocoding error:", err);
-      setLocationError("Failed to search location.");
+    } catch (error) {
+      console.error("Error searching location:", error);
+      setLocationError("Unable to find that location. Please try again.");
     } finally {
       setIsSearchingLocation(false);
     }
@@ -642,6 +1003,15 @@ const Home = () => {
     fetchHomeData();
   }, []);
 
+  // One-time development notice
+  useEffect(() => {
+    const dismissed = localStorage.getItem("groa-dev-notice-dismissed");
+    if (!dismissed) {
+      const timer = setTimeout(() => setShowDevNotice(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   // Get user location and calculate risk assessment
   useEffect(() => {
     const getUserLocation = async () => {
@@ -819,12 +1189,7 @@ const Home = () => {
   }
 
   return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={containerVariants}
-      style={{ paddingTop: "140px" }}
-    >
+    <div className="home-page" style={{ paddingTop: '140px', paddingBottom: '40px' }}>
       {/* Hero Section */}
       <section
         className="hero"
@@ -849,7 +1214,7 @@ const Home = () => {
                 marginBottom: "1rem",
               }}
             >
-              Global Danger Alert Platform
+              Global Situational Awareness
             </span>
             <h1
               className="text-gradient"
@@ -881,16 +1246,19 @@ const Home = () => {
                 marginBottom: 50,
               }}
             >
-              <Link to="/map">
+              <Link
+              //to="/docs"
+              >
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   style={{
                     background: "white",
                     color: "black",
                     border: "none",
+                    opacity: 0.3
                   }}
                 >
-                  Explore Risk Map
+                  View Documentation
                 </motion.button>
               </Link>
               <motion.button
@@ -905,7 +1273,7 @@ const Home = () => {
                   alignItems: "center",
                   gap: "0.5rem",
                   fontWeight: 600,
-                  opacity: 0.5,
+                  opacity: 0.3
                 }}
               >
                 SOS Request
@@ -964,16 +1332,15 @@ const Home = () => {
             }}
           />
 
-          <div className="assessment-area">
-            <div className="risk-status">📍</div>
+          <div className="risk-radar-header">
             <div style={{ flex: 1 }}>
               <h2 style={{ fontSize: "1.4rem", marginBottom: "0.25rem" }}>
-                Your Current Risk Status
+                Personal Risk Radar
               </h2>
               <p
                 style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}
               >
-                Personal safety assessment based on your location
+                Safety, health, and AI guidance for your current location
               </p>
             </div>
             <form
@@ -983,7 +1350,7 @@ const Home = () => {
             >
               <input
                 type="text"
-                placeholder="Enter city or country..."
+                placeholder="Enter a local area, city or country..."
                 value={manualLocation}
                 onChange={(e) => setManualLocation(e.target.value)}
                 style={{
@@ -1015,315 +1382,771 @@ const Home = () => {
             </form>
           </div>
 
-          <div className="grid location-level-grid">
-            <div
-              style={{
-                padding: "1rem",
-                background: "rgba(255,255,255,0.02)",
-                borderRadius: "0.75rem",
-                border: "1px solid var(--border-color)",
-              }}
-            >
-              <h3
-                style={{
-                  color: "var(--text-secondary)",
-                  fontSize: "0.8rem",
-                  marginBottom: "0.25rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                }}
-              >
-                Location
-              </h3>
-              <p style={{ fontSize: "1rem", fontWeight: 600 }}>
-                {userLocation ||
-                  (locationError
-                    ? "Location unavailable"
-                    : "Detecting location...")}
-              </p>
-              {locationError && (
-                <p
-                  style={{
-                    color: "#ef4444",
-                    fontSize: "0.7rem",
-                    marginTop: "0.25rem",
-                  }}
-                >
-                  {locationError}
-                </p>
-              )}
-            </div>
-
-            <div
-              style={{
-                padding: "1rem",
-                background:
-                  riskAssessment?.bgColor || "rgba(16, 185, 129, 0.1)",
-                borderRadius: "0.75rem",
-                border: `1px solid ${riskAssessment?.borderColor || "rgba(16, 185, 129, 0.3)"}`,
-              }}
-            >
-              <h3
-                style={{
-                  color: "var(--text-secondary)",
-                  fontSize: "0.8rem",
-                  marginBottom: "0.25rem",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                }}
-              >
-                Risk Level
-              </h3>
-              <div
-                style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-              >
-                <span
-                  style={{
-                    fontSize: "1rem",
-                    fontWeight: 600,
-                    color: riskAssessment?.color || "#10b981",
-                  }}
-                >
-                  {riskAssessment?.level || "UNKNOWN"}
-                </span>
-                <span
-                  style={{
-                    padding: "0.2rem 0.6rem",
-                    background:
-                      riskAssessment?.bgColor || "rgba(16, 185, 129, 0.2)",
-                    borderRadius: "0.75rem",
-                    fontSize: "0.7rem",
-                    fontWeight: 600,
-                    color: riskAssessment?.color || "#10b981",
-                  }}
-                >
-                  {riskAssessment?.message || "Assessing..."}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: "1.5rem" }}>
-            <h3
-              style={{
-                marginBottom: "0.75rem",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                fontSize: "1rem",
-              }}
-            >
-              Nearby Events
-            </h3>
-            <div className="nearby-events">
-              {nearbyEvents.length > 0 ? (
-                nearbyEvents.map((event, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      padding: "0.75rem",
-                      background: "rgba(255,255,255,0.02)",
-                      borderRadius: "0.5rem",
-                      border: "1px solid var(--border-color)",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      width: "100%",
-                      marginBottom: 10
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                      }}
-                    >
-                      <div
-                        style={{
-                          width: "6px",
-                          height: "6px",
-                          borderRadius: "50%",
-                          background:
-                            event.type === "crisis"
-                              ? "var(--alert-high)"
-                              : "var(--alert-medium)",
-                        }}
-                      />
-                      <span style={{ fontSize: "0.9rem" }}>{event.title}</span>
-                    </div>
-                    <span
-                      style={{
-                        color: "var(--text-secondary)",
-                        fontSize: "0.8rem",
-                      }}
-                    >
-                      {Math.round(event.distance)} km away
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <p
-                  style={{
-                    color: "var(--text-secondary)",
-                    fontSize: "0.85rem",
-                    padding: "0.75rem",
-                  }}
-                >
-                  No significant events detected within 1000km.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Local Weather Display */}
-          {localWeather && (
-            <div style={{ marginBottom: "1.5rem" }}>
-              <h3
-                style={{
-                  marginBottom: "0.75rem",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                  fontSize: "1rem",
-                }}
-              >
-                <FiCloud style={{ color: "var(--accent-color)" }} />
-                Local Weather
-              </h3>
-              <div
-                style={{
-                  display: "flex",
-                  gap: "1rem",
-                  flexWrap: "wrap",
-                  padding: "1rem",
-                  background: "rgba(255,255,255,0.02)",
-                  borderRadius: "0.75rem",
-                  border: "1px solid var(--border-color)",
-                }}
-              >
-                <div style={{ textAlign: "center" }}>
-                  <p
-                    style={{
-                      fontSize: "2rem",
-                      fontWeight: 700,
-                      color: "var(--accent-color)",
-                    }}
-                  >
-                    {Math.round(localWeather.temperature)}°C
-                  </p>
-                  <p
-                    style={{
-                      fontSize: "0.8rem",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    {localWeather.description || localWeather.weather}
-                  </p>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "1.5rem",
-                    alignItems: "center",
-                  }}
-                >
-                  <div>
-                    <FiCloud
-                      style={{ color: "#3b82f6", marginRight: "0.3rem" }}
-                    />
-                    <span style={{ fontSize: "0.85rem" }}>
-                      Humidity: {localWeather.humidity}%
-                    </span>
-                  </div>
-                  <div>
-                    <FiZap
-                      style={{ color: "#f59e0b", marginRight: "0.3rem" }}
-                    />
-                    <span style={{ fontSize: "0.85rem" }}>
-                      Wind: {localWeather.windSpeed} m/s
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           <div
+            className="risk-radar-carousel"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
             style={{
-              padding: "1rem",
-              background:
-                riskAssessment?.bgColor ||
-                "linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)",
-              borderRadius: "0.75rem",
-              border: `1px solid ${riskAssessment?.borderColor || "rgba(59, 130, 246, 0.3)"}`,
+              overflow: "hidden",
+              width: "100%",
+              position: "relative",
+              minHeight: "320px",
             }}
           >
-            <h3
+            <div
+              className="risk-radar-track"
               style={{
-                marginBottom: "0.5rem",
                 display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                fontSize: "0.95rem",
+                width: "100%",
+                transform: `translateX(-${riskCarouselIndex * 100}%)`,
+                transition: "transform 0.3s ease-out",
+                willChange: "transform",
+                minHeight: "320px",
               }}
             >
-              Assessment Note
-            </h3>
-            <p
-              style={{
-                color: "var(--text-secondary)",
-                marginBottom: "0.75rem",
-                fontSize: "0.85rem",
-              }}
-            >
-              {riskAssessment?.note ||
-                "Awaiting location data to provide a detailed safety assessment."}
-            </p>
+              <div
+                className="risk-radar-slide"
+                style={{ flex: "0 0 100%", width: "100%", padding: "0 0.5rem", boxSizing: "border-box", minHeight: "320px" }}
+              >
+                <div className="risk-radar-panel-header">
+                  <h3 style={{ marginTop: 10 }}>Safety Assessment</h3>
+                </div>
+                {hasLocationAssessment ? (
+                  <>
+                    <div className="grid location-level-grid">
+                      <div
+                        style={{
+                          padding: "1rem",
+                          background: "rgba(255,255,255,0.02)",
+                          borderRadius: "0.75rem",
+                          border: "1px solid var(--border-color)",
+                        }}
+                      >
+                        <h3
+                          style={{
+                            color: "var(--text-secondary)",
+                            fontSize: "0.8rem",
+                            marginBottom: "0.25rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "1px",
+                          }}
+                        >
+                          Location
+                        </h3>
+                        <p style={{ fontSize: "1rem", fontWeight: 600 }}>
+                          {userLocation ||
+                            (locationError
+                              ? "Location unavailable"
+                              : "Detecting location...")}
+                        </p>
+                        {locationError && (
+                          <p
+                            style={{
+                              color: "#ef4444",
+                              fontSize: "0.7rem",
+                              marginTop: "0.25rem",
+                            }}
+                          >
+                            {locationError}
+                          </p>
+                        )}
+                      </div>
 
-            <h3
-              style={{
-                marginBottom: "0.5rem",
-                fontSize: "0.9rem",
-                fontWeight: 600,
-              }}
-            >
-              Recommended Awareness
-            </h3>
-            <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
-              {riskAssessment?.advice ? (
-                riskAssessment.advice.map((item, idx) => (
-                  <span
-                    key={idx}
-                    style={{
-                      padding: "0.3rem 0.6rem",
-                      background: item.bg,
-                      borderRadius: "0.4rem",
-                      fontSize: "0.7rem",
-                      fontWeight: 500,
-                      color: item.color,
-                    }}
-                  >
-                    {item.text}
-                  </span>
-                ))
-              ) : (
-                <span
-                  style={{
-                    padding: "0.3rem 0.6rem",
-                    background: "rgba(255,255,255,0.05)",
-                    borderRadius: "0.4rem",
-                    fontSize: "0.7rem",
-                    fontWeight: 500,
-                    color: "var(--text-secondary)",
-                  }}
-                >
-                  No specific recommendations
-                </span>
-              )}
+                      <div
+                        style={{
+                          padding: "1rem",
+                          background:
+                            riskAssessment?.bgColor || "rgba(16, 185, 129, 0.1)",
+                          borderRadius: "0.75rem",
+                          border: `1px solid ${riskAssessment?.borderColor || "rgba(16, 185, 129, 0.3)"}`,
+                        }}
+                      >
+                        <h3
+                          style={{
+                            color: "var(--text-secondary)",
+                            fontSize: "0.8rem",
+                            marginBottom: "0.25rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "1px",
+                          }}
+                        >
+                          Risk Level
+                        </h3>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: "1rem",
+                              fontWeight: 600,
+                              color: riskAssessment?.color || "#10b981",
+                            }}
+                          >
+                            {riskAssessment?.level || "UNKNOWN"}
+                          </span>
+                          <span
+                            style={{
+                              padding: "0.2rem 0.6rem",
+                              background:
+                                riskAssessment?.bgColor || "rgba(16, 185, 129, 0.2)",
+                              borderRadius: "0.75rem",
+                              fontSize: "0.7rem",
+                              fontWeight: 600,
+                              color: riskAssessment?.color || "#10b981",
+                            }}
+                          >
+                            {riskAssessment?.message || "Assessing..."}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: "1.5rem" }}>
+                      <h3
+                        style={{
+                          marginBottom: "0.75rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          fontSize: "1rem",
+                        }}
+                      >
+                        Nearby Events
+                      </h3>
+                      <div className="nearby-events">
+                        {nearbyEvents.length > 0 ? (
+                          nearbyEvents.map((event, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                padding: "0.75rem",
+                                background: "rgba(255,255,255,0.02)",
+                                borderRadius: "0.5rem",
+                                border: "1px solid var(--border-color)",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                width: "100%",
+                                marginBottom: 10,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: "0.5rem",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: "6px",
+                                    height: "6px",
+                                    borderRadius: "50%",
+                                    background:
+                                      event.type === "crisis"
+                                        ? "var(--alert-high)"
+                                        : "var(--alert-medium)",
+                                  }}
+                                />
+                                <span style={{ fontSize: "0.9rem" }}>
+                                  {event.title}
+                                </span>
+                              </div>
+                              <span
+                                style={{
+                                  color: "var(--text-secondary)",
+                                  fontSize: "0.8rem",
+                                }}
+                              >
+                                {Math.round(event.distance)} km away
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <p
+                            style={{
+                              color: "var(--text-secondary)",
+                              fontSize: "0.85rem",
+                              padding: "0.75rem",
+                            }}
+                          >
+                            No significant events detected within 1000km.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {localWeather && (
+                      <div style={{ marginBottom: "1.5rem" }}>
+                        <h3
+                          style={{
+                            marginBottom: "0.75rem",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                            fontSize: "1rem",
+                          }}
+                        >
+                          <FiCloud style={{ color: "var(--accent-color)" }} />
+                          Local Weather
+                        </h3>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: "1rem",
+                            flexWrap: "wrap",
+                            padding: "1rem",
+                            background: "rgba(255,255,255,0.02)",
+                            borderRadius: "0.75rem",
+                            border: "1px solid var(--border-color)",
+                          }}
+                        >
+                          <div style={{ textAlign: "center" }}>
+                            <p
+                              style={{
+                                fontSize: "2rem",
+                                fontWeight: 700,
+                                color: "var(--accent-color)",
+                              }}
+                            >
+                              {Math.round(localWeather.temperature)}°C
+                            </p>
+                            <p
+                              style={{
+                                fontSize: "0.8rem",
+                                color: "var(--text-secondary)",
+                              }}
+                            >
+                              {localWeather.description || localWeather.weather}
+                            </p>
+                          </div>
+                          <div
+                            style={{
+                              display: "flex",
+                              gap: "1.5rem",
+                              alignItems: "center",
+                            }}
+                          >
+                            <div>
+                              <FiCloud
+                                style={{ color: "#3b82f6", marginRight: "0.3rem" }}
+                              />
+                              <span style={{ fontSize: "0.85rem" }}>
+                                Humidity: {localWeather.humidity}%
+                              </span>
+                            </div>
+                            <div>
+                              <FiZap
+                                style={{ color: "#f59e0b", marginRight: "0.3rem" }}
+                              />
+                              <span style={{ fontSize: "0.85rem" }}>
+                                Wind: {localWeather.windSpeed} m/s
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        padding: "1rem",
+                        background:
+                          riskAssessment?.bgColor ||
+                          "linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%)",
+                        borderRadius: "0.75rem",
+                        border: `1px solid ${riskAssessment?.borderColor || "rgba(59, 130, 246, 0.3)"}`,
+                      }}
+                    >
+                      <h3
+                        style={{
+                          marginBottom: "0.5rem",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          fontSize: "0.95rem",
+                        }}
+                      >
+                        Assessment Note
+                      </h3>
+                      <p
+                        style={{
+                          color: "var(--text-secondary)",
+                          marginBottom: "0.75rem",
+                          fontSize: "0.85rem",
+                        }}
+                      >
+                        {riskAssessment?.note ||
+                          "Awaiting location data to provide a detailed safety assessment."}
+                      </p>
+
+                      <h3
+                        style={{
+                          marginBottom: "0.5rem",
+                          fontSize: "0.9rem",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Recommended Awareness
+                      </h3>
+                      <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                        {riskAssessment?.advice ? (
+                          riskAssessment.advice.map((item, idx) => (
+                            <span
+                              key={idx}
+                              style={{
+                                padding: "0.3rem 0.6rem",
+                                background: item.bg,
+                                borderRadius: "0.4rem",
+                                fontSize: "0.7rem",
+                                fontWeight: 500,
+                                color: item.color,
+                              }}
+                            >
+                              {item.text}
+                            </span>
+                          ))
+                        ) : (
+                          <span
+                            style={{
+                              padding: "0.3rem 0.6rem",
+                              background: "rgba(255,255,255,0.05)",
+                              borderRadius: "0.4rem",
+                              fontSize: "0.7rem",
+                              fontWeight: 500,
+                              color: "var(--text-secondary)",
+                            }}
+                          >
+                            No specific recommendations
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="risk-radar-placeholder">
+                    Search a country or city for safety assessment.
+                  </div>
+                )}
+              </div>
+
+              <div
+                className="risk-radar-slide"
+                style={{ flex: "0 0 100%", width: "100%", padding: "0 0.5rem", boxSizing: "border-box", minHeight: "320px" }}
+              >
+                <div className="risk-radar-panel-header">
+                  <h3 style={{ marginTop: 10 }}>Health Check</h3>
+                </div>
+                {hasLocationAssessment ? (
+                  !healthCheckComplete ? (
+                    <div className="personal-health-form">
+                      <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginBottom: "1rem" }}>
+                        Tell us about your health to get personalized safety guidance. This stays on your device.
+                      </p>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.5rem", fontWeight: 600 }}>
+                            Health Conditions
+                          </label>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                            {["Heart Condition", "Diabetes", "Respiratory (Asthma/COPD)", "Immune Disorder", "Cancer", "Stroke History", "Kidney Disease", "Liver Disease", "High Blood Pressure", "None"].map((condition) => (
+                              <button
+                                key={condition}
+                                type="button"
+                                onClick={() => condition !== "None" ? handleHealthConditionToggle(condition) : handlePersonalHealthChange("conditions", personalHealth.conditions.includes("None") ? [] : ["None"])}
+                                style={{
+                                  padding: "0.4rem 0.75rem",
+                                  borderRadius: "0.5rem",
+                                  border: "1px solid",
+                                  background: personalHealth.conditions.includes(condition) ? "var(--accent-color)" : "rgba(255,255,255,0.05)",
+                                  color: personalHealth.conditions.includes(condition) ? "white" : "var(--text-secondary)",
+                                  borderColor: personalHealth.conditions.includes(condition) ? "var(--accent-color)" : "var(--border-color)",
+                                  fontSize: "0.7rem",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {condition}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.5rem", fontWeight: 600 }}>
+                            On Regular Medications?
+                          </label>
+                          <div style={{ display: "flex", gap: "1rem" }}>
+                            {["Yes", "No"].map((opt) => (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() => handlePersonalHealthChange("medications", opt === "Yes")}
+                                style={{
+                                  padding: "0.5rem 1rem",
+                                  borderRadius: "0.5rem",
+                                  border: "1px solid",
+                                  background: personalHealth.medications === (opt === "Yes") ? "var(--accent-color)" : "rgba(255,255,255,0.05)",
+                                  color: personalHealth.medications === (opt === "Yes") ? "white" : "var(--text-secondary)",
+                                  borderColor: personalHealth.medications === (opt === "Yes") ? "var(--accent-color)" : "var(--border-color)",
+                                  fontSize: "0.8rem",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.5rem", fontWeight: 600 }}>
+                            Mobility Level
+                          </label>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                            {[
+                              { value: "full", label: "Full Mobility" },
+                              { value: "limited", label: "Limited Mobility" },
+                              { value: "assisted", label: "Need Assistance" },
+                            ].map((opt) => (
+                              <button
+                                key={opt.value}
+                                type="button"
+                                onClick={() => handlePersonalHealthChange("mobility", opt.value)}
+                                style={{
+                                  padding: "0.5rem 1rem",
+                                  borderRadius: "0.5rem",
+                                  border: "1px solid",
+                                  background: personalHealth.mobility === opt.value ? "var(--accent-color)" : "rgba(255,255,255,0.05)",
+                                  color: personalHealth.mobility === opt.value ? "white" : "var(--text-secondary)",
+                                  borderColor: personalHealth.mobility === opt.value ? "var(--accent-color)" : "var(--border-color)",
+                                  fontSize: "0.8rem",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.5rem", fontWeight: 600 }}>
+                            Allergies (Severe)
+                          </label>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                            {["Penicillin", "Sulfa Drugs", "NSAIDs", "Latex", "Insect Stings", "Food (Nuts/Shellfish)", "None"].map((allergy) => (
+                              <button
+                                key={allergy}
+                                type="button"
+                                onClick={() => allergy !== "None" ? handleAllergyToggle(allergy) : handlePersonalHealthChange("allergies", personalHealth.allergies.includes("None") ? [] : ["None"])}
+                                style={{
+                                  padding: "0.4rem 0.75rem",
+                                  borderRadius: "0.5rem",
+                                  border: "1px solid",
+                                  background: personalHealth.allergies.includes(allergy) ? "#ef4444" : "rgba(255,255,255,0.05)",
+                                  color: personalHealth.allergies.includes(allergy) ? "white" : "var(--text-secondary)",
+                                  borderColor: personalHealth.allergies.includes(allergy) ? "#ef4444" : "var(--border-color)",
+                                  fontSize: "0.7rem",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {allergy}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                          <div>
+                            <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.5rem", fontWeight: 600 }}>
+                              Stress Level
+                            </label>
+                            <select
+                              value={personalHealth.stressLevel}
+                              onChange={(e) => handlePersonalHealthChange("stressLevel", e.target.value)}
+                              style={{
+                                width: "100%",
+                                padding: "0.5rem",
+                                background: "rgba(255,255,255,0.05)",
+                                border: "1px solid var(--border-color)",
+                                borderRadius: "0.5rem",
+                                color: "white",
+                                fontSize: "0.8rem",
+                              }}
+                            >
+                              <option value="low">Low</option>
+                              <option value="moderate">Moderate</option>
+                              <option value="high">High</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.5rem", fontWeight: 600 }}>
+                              Sleep Quality
+                            </label>
+                            <select
+                              value={personalHealth.sleepQuality}
+                              onChange={(e) => handlePersonalHealthChange("sleepQuality", e.target.value)}
+                              style={{
+                                width: "100%",
+                                padding: "0.5rem",
+                                background: "rgba(255,255,255,0.05)",
+                                border: "1px solid var(--border-color)",
+                                borderRadius: "0.5rem",
+                                color: "white",
+                                fontSize: "0.8rem",
+                              }}
+                            >
+                              <option value="good">Good</option>
+                              <option value="fair">Fair</option>
+                              <option value="poor">Poor</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label style={{ display: "block", fontSize: "0.8rem", marginBottom: "0.5rem", fontWeight: 600 }}>
+                            Hydration Level
+                          </label>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
+                            {["adequate", "moderate", "low"].map((opt) => (
+                              <button
+                                key={opt}
+                                type="button"
+                                onClick={() => handlePersonalHealthChange("hydration", opt)}
+                                style={{
+                                  padding: "0.5rem 1rem",
+                                  borderRadius: "0.5rem",
+                                  border: "1px solid",
+                                  background: personalHealth.hydration === opt ? "var(--accent-color)" : "rgba(255,255,255,0.05)",
+                                  color: personalHealth.hydration === opt ? "white" : "var(--text-secondary)",
+                                  borderColor: personalHealth.hydration === opt ? "var(--accent-color)" : "var(--border-color)",
+                                  fontSize: "0.8rem",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={completeHealthCheck}
+                          style={{
+                            marginTop: "1rem",
+                            padding: "0.75rem",
+                            background: "linear-gradient(135deg, var(--accent-color) 0%, #3b82f6 100%)",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "0.5rem",
+                            fontSize: "0.9rem",
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            width: "100%",
+                          }}
+                        >
+                          Complete Health Assessment
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="personal-health-results">
+                      <div
+                        style={{
+                          padding: "1rem",
+                          background: getPersonalHealthGuidance?.riskLevel === "HIGH" ? "rgba(239, 68, 68, 0.15)" : getPersonalHealthGuidance?.riskLevel === "MODERATE" ? "rgba(245, 158, 11, 0.15)" : "rgba(16, 185, 129, 0.15)",
+                          borderRadius: "0.75rem",
+                          border: `1px solid ${getPersonalHealthGuidance?.riskLevel === "HIGH" ? "rgba(239, 68, 68, 0.4)" : getPersonalHealthGuidance?.riskLevel === "MODERATE" ? "rgba(245, 158, 11, 0.4)" : "rgba(16, 185, 129, 0.4)"}`,
+                          marginBottom: "1rem",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                          <h4 style={{ margin: 0, fontSize: "0.9rem" }}>Personal Health Risk Level</h4>
+                          <span
+                            style={{
+                              padding: "0.25rem 0.75rem",
+                              borderRadius: "1rem",
+                              fontSize: "0.7rem",
+                              fontWeight: 700,
+                              background: getPersonalHealthGuidance?.riskLevel === "HIGH" ? "#ef4444" : getPersonalHealthGuidance?.riskLevel === "MODERATE" ? "#f59e0b" : "#10b981",
+                              color: "white",
+                            }}
+                          >
+                            {getPersonalHealthGuidance?.riskLevel}
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                          Based on your health profile and current location risk
+                        </p>
+                      </div>
+
+                      <div style={{ marginBottom: "1rem" }}>
+                        <h4 style={{ marginBottom: "0.5rem", fontSize: "0.85rem" }}>🎯 What to Do</h4>
+                        <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                          {getPersonalHealthGuidance?.immediateActions?.map((action, i) => (
+                            <li key={i}>{action}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div style={{ marginBottom: "1rem" }}>
+                        <h4 style={{ marginBottom: "0.5rem", fontSize: "0.85rem" }}>🛡️ Precautions</h4>
+                        <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: 1.8 }}>
+                          {getPersonalHealthGuidance?.precautions?.map((precaution, i) => (
+                            <li key={i}>{precaution}</li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {getPersonalHealthGuidance?.seekCare && (
+                        <div
+                          style={{
+                            padding: "1rem",
+                            background: "rgba(239, 68, 68, 0.15)",
+                            borderRadius: "0.75rem",
+                            border: "1px solid rgba(239, 68, 68, 0.4)",
+                            marginBottom: "1rem",
+                          }}
+                        >
+                          <h4 style={{ margin: "0 0 0.5rem 0", color: "#ef4444", fontSize: "0.85rem" }}>⚠️ Seek Medical Care</h4>
+                          <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                            {getPersonalHealthGuidance.whereToGo}
+                          </p>
+                        </div>
+                      )}
+
+                      <div style={{ marginBottom: "1rem" }}>
+                        <h4 style={{ marginBottom: "0.5rem", fontSize: "0.85rem" }}>📍 Where to Go</h4>
+                        <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                          {getPersonalHealthGuidance?.whereToGo || "Continue with routine care"}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={resetHealthCheck}
+                        style={{
+                          marginTop: "1rem",
+                          padding: "0.5rem 1rem",
+                          background: "transparent",
+                          color: "var(--accent-color)",
+                          border: "1px solid var(--accent-color)",
+                          borderRadius: "0.5rem",
+                          fontSize: "0.8rem",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Retake Assessment
+                      </button>
+                    </div>
+                  )
+                ) : (
+                  <div className="risk-radar-placeholder">
+                    Search a country or city to unlock the personal health check.
+                  </div>
+                )}
+              </div>
+
+              <div
+                className="risk-radar-slide"
+                style={{ flex: "0 0 100%", width: "100%", padding: "0 0.5rem", boxSizing: "border-box", minHeight: "320px" }}
+              >
+                <div className="risk-radar-panel-header">
+                  <h3 style={{ marginTop: 10 }}>AI Summary</h3>
+                </div>
+                {hasLocationAssessment && aiSummary ? (
+                  <div className="risk-radar-ai-box">
+                    <p className="risk-radar-ai-headline">{aiSummary.headline}</p>
+                    <p>{aiSummary.body}</p>
+                    <div className="risk-radar-ai-recommendation">
+                      <span>AI recommendation: </span>
+                      <strong>{aiSummary.recommendation}</strong>
+                    </div>
+
+                    <div style={{ marginTop: "1.5rem", paddingTop: "1rem", borderTop: "1px solid var(--border-color)" }}>
+                      <h4 style={{ marginBottom: "0.75rem", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <span style={{ fontSize: "1rem" }}>🎯</span>
+                        What to Do Now
+                      </h4>
+                      <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: 2 }}>
+                        {getAiActionPlan.map((action, i) => (
+                          <li key={i}>{action}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div style={{ marginTop: "1rem", paddingTop: "1rem", borderTop: "1px solid var(--border-color)" }}>
+                      <h4 style={{ marginBottom: "0.75rem", fontSize: "0.9rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <span style={{ fontSize: "1rem" }}>📍</span>
+                        Where to Go / Who to Contact
+                      </h4>
+                      <ul style={{ margin: 0, paddingLeft: "1.25rem", fontSize: "0.8rem", color: "var(--text-secondary)", lineHeight: 2 }}>
+                        {getAiWhereToGo.map((place, i) => (
+                          <li key={i}>{place}</li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="risk-radar-chat-button"
+                      style={{ opacity: 0.3 }}
+                      //onClick={() => setTelvinPopupOpen(true)}
+                    >
+                      Chat with Telvin for Details
+                    </button>
+                  </div>
+                ) : (
+                  <div className="risk-radar-placeholder">
+                    Search a country or city to unlock the AI summary and Telvin chat.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          <div
+            className="risk-radar-dots"
+            aria-label="Risk radar navigation"
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              gap: "0.5rem",
+              marginTop: "1rem",
+            }}
+          >
+            {[0, 1, 2].map((dotIndex) => (
+              <button
+                key={dotIndex}
+                type="button"
+                className={`risk-radar-dot ${riskCarouselIndex === dotIndex ? "active" : ""}`}
+                onClick={() => setRiskCarouselIndex(dotIndex)}
+                aria-label={`View panel ${dotIndex + 1}`}
+                style={{
+                  width: "10px",
+                  height: "10px",
+                  borderRadius: "50%",
+                  border: "none",
+                  background: riskCarouselIndex === dotIndex ? "var(--accent-color)" : "var(--border-color)",
+                  cursor: "pointer",
+                  transition: "background 0.2s, transform 0.2s",
+                  opacity: riskCarouselIndex === dotIndex ? 1 : 0.5,
+                  transform: riskCarouselIndex === dotIndex ? "scale(1.2)" : "scale(1)",
+                }}
+              />
+            ))}
+          </div>
         </motion.div>
+
+        <TelvinPopup
+          isOpen={telvinPopupOpen}
+          onClose={() => setTelvinPopupOpen(false)}
+        />
 
         {/* Stats Grid */}
         <div
@@ -1359,7 +2182,7 @@ const Home = () => {
           ))}
         </div>
 
-        {/* Latest Alerts */}
+        {/* Latest Alerts 
         <section>
           <div
             style={{
@@ -1484,7 +2307,7 @@ const Home = () => {
               </motion.div>
             ))}
           </div>
-        </section>
+        </section> */}
 
         {/* Global Overview Section */}
         <section
@@ -1598,7 +2421,7 @@ const Home = () => {
           </div>
         </section>
 
-        {/* Active Crises */}
+        {/* Active Crises
         <section style={{ marginBottom: "6rem" }}>
           <h2 className="section-title">Active Humanitarian Crises</h2>
           <div
@@ -1676,7 +2499,7 @@ const Home = () => {
               </motion.div>
             ))}
           </div>
-        </section>
+        </section> */}
       </div>
 
       {/* SOS Emergency Request Modal */}
@@ -1831,7 +2654,7 @@ const Home = () => {
                           color: "var(--text-secondary)",
                         }}
                       >
-                        Someone trapped during earthquake, flood, hurricane, or
+                        Someone trapped during earthquake, flood, hurricane or
                         wildfire
                       </p>
                     </div>
@@ -1854,7 +2677,7 @@ const Home = () => {
                           color: "var(--text-secondary)",
                         }}
                       >
-                        Witnessing active violence, kidnapping, or terrorist
+                        Witnessing active violence, kidnapping or terrorist
                         incident
                       </p>
                     </div>
@@ -1877,7 +2700,7 @@ const Home = () => {
                           color: "var(--text-secondary)",
                         }}
                       >
-                        Stuck during active combat, needing evacuation, or
+                        Stuck during active combat, needing evacuation or
                         humanitarian crisis
                       </p>
                     </div>
@@ -1892,6 +2715,28 @@ const Home = () => {
                     >
                       <h4 style={{ margin: "0 0 0.5rem 0", color: "#ef4444" }}>
                         Medical Emergency
+                      </h4>
+                      <p
+                        style={{
+                          margin: 0,
+                          fontSize: "0.9rem",
+                          color: "var(--text-secondary)",
+                        }}
+                      >
+                        Lost in an unfamiliar territory or place and anything else
+                      </p>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: "1rem",
+                        background: "rgba(239, 68, 68, 0.1)",
+                        borderRadius: "0.5rem",
+                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                      }}
+                    >
+                      <h4 style={{ margin: "0 0 0.5rem 0", color: "#ef4444" }}>
+                        Other?
                       </h4>
                       <p
                         style={{
@@ -2047,7 +2892,7 @@ const Home = () => {
                       }}
                     >
                       This system is for genuine life-threatening emergencies
-                      only. False reports may result in account suspension.
+                      only.
                     </p>
                     <motion.button
                       whileHover={{ scale: 1.02 }}
@@ -2074,7 +2919,91 @@ const Home = () => {
           </motion.div>
         </motion.div>
       )}
-    </motion.div>
+
+      {/* Development Notice Popup */}
+      {showDevNotice && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          style={{
+            position: "fixed",
+            bottom: "2rem",
+            right: "2rem",
+            zIndex: 9999,
+            maxWidth: "420px",
+          }}
+        >
+          <motion.div
+            whileHover={{ scale: 1.01 }}
+            style={{
+              background: "linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%)",
+              border: "1px solid var(--border-color)",
+              borderRadius: "1rem",
+              padding: "1.5rem",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(59, 130, 246, 0.1)",
+              backdropFilter: "blur(20px)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: "1rem", fontWeight: 700 }}>Active Development</h3>
+                  <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 500 }}>G.R.O.A Platform</p>
+                </div>
+              </div>
+              <button
+                onClick={() => { localStorage.setItem("groa-dev-notice-dismissed", "true"); setShowDevNotice(false); }}
+                style={{
+                  background: "none", border: "none", color: "var(--text-secondary)",
+                  fontSize: "1.25rem", cursor: "pointer", padding: "0.25rem",
+                  lineHeight: 1, opacity: 0.7, transition: "opacity 0.2s"
+                }}
+                onMouseOver={(e) => e.target.style.opacity = "1"}
+                onMouseOut={(e) => e.target.style.opacity = "0.7"}
+                aria-label="Dismiss notice"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p style={{ margin: "0 0 1rem 0", fontSize: "0.85rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
+              G.R.O.A is currently in active development. Some features and screens may not function as intended or may display stale data while we refine the platform.
+            </p>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.75rem", color: "var(--accent-color)", marginBottom: "1rem", padding: "0.5rem 0.75rem", background: "rgba(59, 130, 246, 0.1)", borderRadius: "0.5rem", border: "1px solid rgba(59, 130, 246, 0.2)" }}>
+              <span>Updates are released every 24 hours — check back for improvements.</span>
+            </div>
+
+            <div style={{ display: "flex", gap: "0.75rem" }}>
+              <button
+                onClick={() => { localStorage.setItem("groa-dev-notice-dismissed", "true"); setShowDevNotice(false); }}
+                style={{
+                  flex: 1, padding: "0.6rem 1rem", borderRadius: "0.5rem",
+                  background: "var(--accent-color)", color: "white", border: "none",
+                  fontSize: "0.8rem", fontWeight: 600, cursor: "pointer",
+                  transition: "opacity 0.2s"
+                }}
+                onMouseOver={(e) => e.target.style.opacity = "0.9"}
+                onMouseOut={(e) => e.target.style.opacity = "1"}
+              >
+                Understood
+              </button>
+              <button
+                onClick={() => setShowDevNotice(false)}
+                style={{
+                  padding: "0.6rem 1rem", borderRadius: "0.5rem",
+                  background: "transparent", color: "var(--text-secondary)", border: "1px solid var(--border-color)",
+                  fontSize: "0.8rem", fontWeight: 500, cursor: "pointer",
+                }}
+              >
+                Remind Later
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </div>
   );
 };
 

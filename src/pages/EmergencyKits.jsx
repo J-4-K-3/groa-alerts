@@ -439,6 +439,9 @@ const EmergencyKits = () => {
             >
               ✓ Practice emergency procedures
             </span>
+            <button>
+              ✓ Start creating your kit
+            </button>
           </div>
         </motion.div>
       </div>

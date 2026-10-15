@@ -5,16 +5,23 @@ import {
   FiLinkedin,
   FiMail,
   FiGlobe,
+  FiSettings,
+  FiCheck
 } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import logo from "../assets/logo.svg";
 
 // Import popup components
+import TelvinPopup from "./popups/TelvinPopup";
+import OmniPopup from "./popups/OmniMode";
+import UpvotePopup from "./popups/Upvote";
+import AuthenPopup from "./popups/AuthenPopup";
 import EvacuationRoutesPopup from "./popups/EvacuationRoutesPopup";
 import SafeZonesPopup from "./popups/SafeZonesPopup";
 import SafetyProtocolsPopup from "./popups/SafetyProtocolsPopup";
 import TrainingProgramsPopup from "./popups/TrainingProgramsPopup";
+import FeaturePopup from "./popups/FeatureRequest";
 import CommunityNotesPopup from "./popups/CommunityNotesPopup";
 import PredictionsPopup from "./popups/PredictionsPopup";
 import AnonymousTipsPopup from "./popups/AnonymousTipsPopup";
@@ -24,27 +31,48 @@ import DiscussionsPopup from "./popups/DiscussionsPopup";
 import VotingsPopup from "./popups/VotingsPopup";
 import ReportVerificationPopup from "./popups/ReportVerificationPopup";
 import ImpactTrackingPopup from "./popups/ImpactTrackingPopup";
+import RequestDataPopup from "./popups/RequestDataPopup";
+import ReportIssuePopup from "./popups/ReportIssue";
 import CollaborativeMappingPopup from "./popups/CollaborativeMappingPopup";
+import FBIPopup from "./popups/FbiModePopup";
+import SolutionPopup from "./popups/SolutionPopup";
+import SurveyPopup from "./popups/SurveyPopup";
+import IdeaPopup from "./popups/IdeaSwopPopup";
+import CollaborativeTipsPopup from "./popups/CollaborativeTipsPopup";
+import LanguagePopup from "./popups/LanguagePopup";
+import SettingsPopup from "./popups/SettingsPopup";
 
 const Footer = () => {
   // State for popup visibility
+  const [telvinChat, setTelvinChat] = useState(false);
+  const [omniMode, setOmniMode] = useState(false);
+  const [upvote, setUpvote] = useState(false);
+  const [authen, setAuthen] = useState(false);
+  const [requestData, setRequestData] = useState(false);
+  const [reportIssue, setReportIssue] = useState(false)
   const [showEvacuationRoutes, setShowEvacuationRoutes] = useState(false);
   const [showSafeZones, setShowSafeZones] = useState(false);
   const [showSafetyProtocols, setShowSafetyProtocols] = useState(false);
   const [showTrainingPrograms, setShowTrainingPrograms] = useState(false);
+  const [featureRequest, setFeatureRequest] = useState(false)
   const [showCommunityNotes, setShowCommunityNotes] = useState(false);
   const [showPredictions, setShowPredictions] = useState(false);
   const [showAnonymousTips, setShowAnonymousTips] = useState(false);
   const [showLocalNetworks, setShowLocalNetworks] = useState(false);
   const [showSupportGroups, setShowSupportGroups] = useState(false);
-  const [showSurvivorStories, setShowSurvivorStories] = useState(false);
   const [showDiscussions, setShowDiscussions] = useState(false);
   const [showVotings, setShowVotings] = useState(false);
-  const [showPolls, setShowPolls] = useState(false);
   const [showReportVerification, setShowReportVerification] = useState(false);
   const [showImpactTracking, setShowImpactTracking] = useState(false);
-  const [showCollaborativeMapping, setShowCollaborativeMapping] =
-    useState(false);
+  const [showCollaborativeMapping, setShowCollaborativeMapping] = useState(false);
+  const [fbi, setFbi] = useState(false)
+  const [solution, setSolution] = useState(false)
+  const [survey, setSurvey] = useState(false)
+  const [ideaSwop, setIdeaSwop] = useState(false)
+  const [showCollaborativeTips, setShowCollaborativeTips] = useState(false);
+  const [language, setLanguage] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+
   return (
     <motion.footer
       initial={{ opacity: 0 }}
@@ -53,6 +81,33 @@ const Footer = () => {
       viewport={{ once: true }}
     >
       <div className="container">
+        <div className="footer-subscription" style={{ marginBottom: 60 }}>
+          <form
+            style={{ maxWidth: "600px", margin: "0 auto", position: "relative" }}
+          >
+            <input
+              type="text"
+              className="glass"
+              placeholder="Subscribe to our news letter"
+              style={{
+                width: "100%",
+                padding: "1.2rem 1.5rem 1.2rem 3.5rem",
+                borderRadius: "1rem",
+                border: "1px solid var(--border-color)",
+                fontSize: "1.1rem",
+                color: "white",
+                outline: "none",
+              }}
+            />
+            <button
+              type="submit"
+              className="sub-btn"
+            >
+              <FiCheck size={30} />
+            </button>
+          </form>
+          <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 14, marginTop: 5 }}>Letters arrive every 2 days once a week</p>
+        </div>
         <div
           className="footer-grid"
         >
@@ -61,16 +116,15 @@ const Footer = () => {
               to="/"
               className="footer-logo"
             >
-            <img src={logo} alt="G.R.O.A" className="footer-logo-img" />
+              <img src={logo} alt="G.R.O.A" className="footer-logo-img" />
             </Link>
             <p className="footer-description"
             >
-              Global Danger Alert Platform providing real-time, verified
+              Global Risk Observation & Analysis providing real-time, verified
               situational awareness for humanitarian response and individual
               safety.
             </p>
-            {/*<div className="footer-socials"
-            >
+            {/*<div className="footer-socials">
               <motion.a
                 whileHover={{ color: "var(--accent-color)", y: -2 }}
                 href="#"
@@ -99,57 +153,144 @@ const Footer = () => {
           </div>
 
           <div>
+            <h4 className="footer-h4">Company</h4>
+            <ul className="footer-nav">
+              <li>
+                <span
+                  onClick={() => setShowPredictions(true)}
+                  style={{ cursor: "pointer", color: "var(--text-secondary)" }}
+                >
+                  Predictions
+                </span>
+              </li>
+              <li>
+                <span onClick={() => setTelvinChat(true)} style={{ cursor: "pointer", color: "var(--text-secondary)" }}>
+                  Telvin
+                </span>
+              </li>
+              <li>
+                <span 
+                  //onClick={() => setOmniMode(true)} 
+                  style={{ cursor: "pointer", color: "var(--text-secondary)", opacity: 0.3 }}
+                >
+                  Omni Mode
+                </span>
+              </li>
+
+              <li>
+                <Link 
+                  //to="/local" 
+                  style={{ color: "var(--text-secondary)", opacity: 0.3 }}
+                >
+                  Project L.O.C.A.L
+                </Link>
+              </li>
+
+              <li>
+                <Link to="/givedata" style={{ color: "var(--text-secondary)" }}>
+                  Give us Data
+                </Link>
+              </li>
+              <li>
+                <span onClick={() => setUpvote(true)} style={{ cursor: 'pointer', color: "var(--text-secondary)" }}>
+                  Platform Upvote
+                </span>
+              </li>
+              <li>
+                <Link 
+                  //to="/earn" 
+                  style={{ color: "var(--text-secondary)", opacity: 0.3 }}
+                >
+                  Earn with G.R.O.A
+                </Link>
+              </li>
+              <li>
+                <span onClick={() => setAuthen(true)} style={{ cursor: 'pointer', color: "var(--text-secondary)" }}>
+                  Authen
+                </span>
+              </li>
+            </ul>
+          </div>
+
+          <div>
             <h4 className="footer-h4">Platform</h4>
             <ul className="footer-nav"
             >
               <li>
-                <Link to="/map" style={{ color: "var(--text-secondary)" }}>
-                  Global Risk Map
+                <Link to="/submit-report" style={{ color: "var(--text-secondary)" }}>
+                  Report Emergency
                 </Link>
               </li>
               <li>
-                <Link to="/alerts" style={{ color: "var(--text-secondary)" }}>
-                  Live Alert Feed
+                <Link to="/compass" style={{ color: "var(--text-secondary)" }}>
+                  Compass
                 </Link>
               </li>
               <li>
                 <Link to="/weather" style={{ color: "var(--text-secondary)" }}>
-                  Weather Monitoring
+                  Weather Forecast
                 </Link>
               </li>
               <li>
-                <Link to="/regions" style={{ color: "var(--text-secondary)" }}>
-                  Regional Analysis
+                <Link to="/plane-tracking" style={{ color: "var(--text-secondary)" }}>
+                  Plane Tracking
                 </Link>
               </li>
               <li>
-                <Link to="/crises" style={{ color: "var(--text-secondary)" }}>
-                  Active Crises
-                </Link>
-              </li>
-              <li>
-                <Link
-                  to="/emergency-contacts"
-                  style={{ color: "var(--text-secondary)" }}
+                <Link 
+                  //to="/climate-change" 
+                  style={{ color: "var(--text-secondary)", opacity: 0.3 }}
                 >
-                  Emergency Contacts
+                  Climate Change
                 </Link>
               </li>
               <li>
                 <span
-                  onClick={() => setShowEvacuationRoutes(true)}
-                  style={{ cursor: "pointer", color: "var(--text-secondary)" }}
+                  //onClick={() => setShowCollaborativeMapping(true)}
+                  style={{
+                    cursor: "pointer", color: "var(--text-secondary)", opacity: 0.3
+                  }}
                 >
-                  Evacuation Routes
+                  Collaborative Mapping
                 </span>
               </li>
               <li>
                 <span
-                  onClick={() => setShowSafeZones(true)}
-                  style={{ cursor: "pointer", color: "var(--text-secondary)" }}
+                  //onClick={() => setShowImpactTracking(true)}
+                  style={{
+                    cursor: "pointer", color: "var(--text-secondary)", opacity: 0.3
+                  }}
                 >
-                  Safe Zones
+                  Impact Tracking
                 </span>
+              </li>
+              <li>
+                <span
+                  //onClick={() => setShowReportVerification(true)}
+                  style={{
+                    cursor: "pointer", color: "var(--text-secondary)", opacity: 0.3
+                  }}
+                >
+                  Report Verification
+                </span>
+              </li>
+              <li>
+                <span onClick={() => setRequestData(true)} style={{ cursor: "pointer", color: "var(--text-secondary)" }}>
+                  Request Data / Info
+                </span>
+              </li>
+              <li>
+                <span onClick={() => setReportIssue(true)} style={{ cursor: "pointer", color: "var(--text-secondary)" }}>
+                  Report an Issue
+                </span>
+              </li>
+              <li>
+                <Link 
+                  //to="/research-study" 
+                  style={{ color: "var(--text-secondary)", opacity: 0.3 }}
+                >
+                  Research Study
+                </Link>
               </li>
             </ul>
           </div>
@@ -166,11 +307,6 @@ const Footer = () => {
                 gap: "0.75rem",
               }}
             >
-              <li>
-                <Link to="/about" style={{ color: "var(--text-secondary)" }}>
-                  How it Works
-                </Link>
-              </li>
               <li>
                 <Link
                   to="/aid-relief"
@@ -219,6 +355,42 @@ const Footer = () => {
                   Trusted Organizations
                 </Link>
               </li>
+              <li>
+                <Link
+                  to="/emergency-contacts"
+                  style={{ color: "var(--text-secondary)" }}
+                >
+                  Emergency Contacts
+                </Link>
+              </li>
+              <li>
+                <Link
+                  style={{ color: "var(--text-secondary)", opacity: 0.3 }}
+                >
+                  A.E.G
+                </Link>
+              </li>
+              <li>
+                <span
+                  //onClick={() => setFbi(true)}
+                  style={{ cursor: 'pointer', color: "var(--text-secondary)", opacity: 0.3 }}
+                >
+                  F.B.I Mode
+                </span>
+              </li>
+              <li>
+                <span
+                  onClick={() => setSolution(true)}
+                  style={{ cursor: 'pointer', color: "var(--text-secondary)" }}
+                >
+                  Solution Inventory
+                </span>
+              </li>
+              <li>
+                <span onClick={() => setSurvey(true)} style={{ cursor: 'pointer', color: "var(--text-secondary)" }}>
+                  Growth Survey
+                </span>
+              </li>
             </ul>
           </div>
 
@@ -236,6 +408,14 @@ const Footer = () => {
             >
               <li>
                 <span
+                  onClick={() => setFeatureRequest(true)}
+                  style={{ cursor: "pointer", color: "var(--text-secondary)" }}
+                >
+                  Feature Request
+                </span>
+              </li>
+              <li>
+                <span
                   onClick={() => setShowCommunityNotes(true)}
                   style={{ cursor: "pointer", color: "var(--text-secondary)" }}
                 >
@@ -243,12 +423,12 @@ const Footer = () => {
                 </span>
               </li>
               <li>
-                <span
-                  onClick={() => setShowPredictions(true)}
-                  style={{ cursor: "pointer", color: "var(--text-secondary)" }}
+                <Link 
+                  //to="/vent-space" 
+                  style={{ color: "var(--text-secondary)", opacity: 0.3 }}
                 >
-                  Predictions
-                </span>
+                  Vent Space
+                </Link>
               </li>
               <li>
                 <span
@@ -260,8 +440,8 @@ const Footer = () => {
               </li>
               <li>
                 <span
-                  onClick={() => setShowLocalNetworks(true)}
-                  style={{ cursor: "pointer", color: "var(--text-secondary)" }}
+                  //onClick={() => setShowLocalNetworks(true)}
+                  style={{ cursor: "pointer", color: "var(--text-secondary)", opacity: 0.3 }}
                 >
                   Local Networks
                 </span>
@@ -290,6 +470,43 @@ const Footer = () => {
                   Votings
                 </span>
               </li>
+              <li>
+                <span
+                  onClick={() => setShowEvacuationRoutes(true)}
+                  style={{ cursor: "pointer", color: "var(--text-secondary)" }}
+                >
+                  Evacuation Routes
+                </span>
+              </li>
+              <li>
+                <span
+                  onClick={() => setShowSafeZones(true)}
+                  style={{ cursor: "pointer", color: "var(--text-secondary)" }}
+                >
+                  Safe Zones
+                </span>
+              </li>
+              <li>
+                <span
+                  //onClick={() => setIdeaSwop(true)}
+                  style={{ cursor: "pointer", color: "var(--text-secondary)", opacity: 0.3 }}
+                >
+                  Idea Swop
+                </span>
+              </li>
+              <li>
+                <span
+                  //onClick={() => setShowCollaborativeTips(true)}
+                  style={{ cursor: "pointer", color: "var(--text-secondary)", opacity: 0.3 }}
+                >
+                  Collaborative Tips
+                </span>
+              </li>
+              <li>
+                <Link to="/basic-support" style={{ color: "var(--text-secondary)" }}>
+                  Support Basics
+                </Link>
+              </li>
             </ul>
           </div>
         </div>
@@ -298,7 +515,7 @@ const Footer = () => {
         >
           <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>
             &copy; 2026{" "}
-            <span style={{ color: "white", fontWeight: 600 }}>Innoxation</span>.
+            <span style={{ color: "white", fontWeight: 600 }}>Innoxation Tech Inc</span>.
             All rights reserved.
           </p>
           <div
@@ -309,19 +526,41 @@ const Footer = () => {
               color: "var(--text-secondary)",
             }}
           >
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
+            <Link to='/privacy-policy'>Privacy Policy</Link>
+            <Link to='/terms-of-service'>Terms of Service</Link>
             <a
-              href="#"
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+              onClick={() => setLanguage(true)}
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: 'pointer' }}
             >
               <FiGlobe /> English (US)
+            </a>
+            <a
+              onClick={() => setShowSettings(true)}
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: 'pointer' }}
+            >
+              <FiSettings /> Settings
             </a>
           </div>
         </div>
       </div>
 
       {/* Popup Components */}
+      <TelvinPopup
+        isOpen={telvinChat}
+        onClose={() => setTelvinChat(false)}
+      />
+      <OmniPopup
+        isOpen={omniMode}
+        onClose={() => setOmniMode(false)}
+      />
+      <UpvotePopup
+        isOpen={upvote}
+        onClose={() => setUpvote(false)}
+      />
+      <AuthenPopup
+        isOpen={authen}
+        onClose={() => setAuthen(false)}
+      />
       <EvacuationRoutesPopup
         isOpen={showEvacuationRoutes}
         onClose={() => setShowEvacuationRoutes(false)}
@@ -337,6 +576,10 @@ const Footer = () => {
       <TrainingProgramsPopup
         isOpen={showTrainingPrograms}
         onClose={() => setShowTrainingPrograms(false)}
+      />
+      <FeaturePopup
+        isOpen={featureRequest}
+        onClose={() => setFeatureRequest(false)}
       />
       <CommunityNotesPopup
         isOpen={showCommunityNotes}
@@ -374,74 +617,48 @@ const Footer = () => {
         isOpen={showImpactTracking}
         onClose={() => setShowImpactTracking(false)}
       />
+      <RequestDataPopup
+        isOpen={requestData}
+        onClose={() => setRequestData(false)}
+      />
+      <ReportIssuePopup
+        isOpen={reportIssue}
+        onClose={() => setReportIssue(false)}
+      />
       <CollaborativeMappingPopup
         isOpen={showCollaborativeMapping}
         onClose={() => setShowCollaborativeMapping(false)}
+      />
+      <FBIPopup
+        isOpen={fbi}
+        onClose={() => setFbi(false)}
+      />
+      <SolutionPopup
+        isOpen={solution}
+        onClose={() => setSolution(false)}
+      />
+      <SurveyPopup
+        isOpen={survey}
+        onClose={() => setSurvey(false)}
+      />
+      <IdeaPopup
+        isOpen={ideaSwop}
+        onClose={() => setIdeaSwop(false)}
+      />
+      <CollaborativeTipsPopup
+        isOpen={showCollaborativeTips}
+        onClose={() => setShowCollaborativeTips(false)}
+      />
+      <LanguagePopup
+        isOpen={language}
+        onClose={() => setLanguage(false)}
+      />
+      <SettingsPopup
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
       />
     </motion.footer>
   );
 };
 
 export default Footer;
-
-{
-  /*
-  <li>
-                <button
-                  onClick={() => setShowCollaborativeMapping(true)}
-                  style={{
-                    color: "var(--text-secondary)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    padding: 0,
-                    fontSize: "inherit",
-                    fontFamily: "inherit",
-                    textDecoration: "none",
-                    display: "inline",
-                  }}
-                >
-                  Collaborative Mapping
-                </button>
-              </li>
-   <li>
-                <button
-                  onClick={() => setShowImpactTracking(true)}
-                  style={{
-                    color: "var(--text-secondary)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    padding: 0,
-                    fontSize: "inherit",
-                    fontFamily: "inherit",
-                    textDecoration: "none",
-                    display: "inline",
-                  }}
-                >
-                  Impact Tracking
-                </button>
-              </li>
-  <li>
-                <button
-                  onClick={() => setShowReportVerification(true)}
-                  style={{
-                    color: "var(--text-secondary)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    padding: 0,
-                    fontSize: "inherit",
-                    fontFamily: "inherit",
-                    textDecoration: "none",
-                    display: "inline",
-                  }}
-                >
-                  Report Verification
-                </button> 
-              </li>
-              */
-}

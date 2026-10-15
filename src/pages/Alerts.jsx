@@ -266,35 +266,22 @@ const Alerts = () => {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       style={{ paddingTop: "140px", paddingBottom: "40px" }}
+      transition={{ duration: 0.5 }}
     >
       <div className="container">
         {/* Header */}
-        <section
-          style={{
-            position: "relative",
-            marginBottom: "4rem",
-            background: "transparent",
-            height: "auto",
-            display: "block",
-          }}
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.2 }}
         >
-          <motion.h1
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            className="text-gradient"
-            style={{ fontSize: "3.5rem", marginBottom: "1rem" }}
-          >
+          <h1 className="text-gradient" style={{ marginBottom: '1rem', fontSize: '3rem' }}>
             Live Alert Feed
-          </motion.h1>
-          <motion.p
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            style={{ fontSize: "1.25rem", color: "var(--text-secondary)" }}
-          >
+          </h1>
+          <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '2rem' }}>
             Real-time, verified danger alerts with actionable safety protocols.
-          </motion.p>
-        </section>
+          </p>
+        </motion.div>
 
         {/* Filters */}
         <motion.div
@@ -376,7 +363,7 @@ const Alerts = () => {
           </div>
         </motion.div>
 
-        {/* Alerts Grid */}
+        {/* Alerts Grid * REMOVE SLASH / AND } HERE
         {alerts.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
@@ -536,7 +523,25 @@ const Alerts = () => {
               );
             })}
           </div>
-        )}
+        )}*/}
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="card glass"
+            style={{
+              padding: "3rem",
+              textAlign: "center",
+              color: "var(--text-secondary)",
+            }}
+          >
+            <FiBell
+              style={{ fontSize: "3rem", marginBottom: "1rem", opacity: 0.5 }}
+            />
+            <h3>Alerts are currently being improved behind the scene</h3>
+            <p>
+              Please come back around 24 hours.
+            </p>
+          </motion.div>
       </div>
     </motion.div>
   );

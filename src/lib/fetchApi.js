@@ -1,5 +1,5 @@
 // fetchApi.js - Centralized API fetching for G.R.O.A platform
-// Handles all external data sources for humanitarian, disaster, and crisis information
+// Handles all external data sources for humanitarian, disaster, crisis information and more
 
 const RELIEFWEB_BASE_URL = "https://api.reliefweb.int/v2";
 const USGS_EARTHQUAKE_BASE_URL = "https://earthquake.usgs.gov/fdsnws/event/1";
@@ -67,7 +67,11 @@ export const geocodeOpenMeteo = async (city) => {
   const query = `${OPENMETEO_GEOCODING_URL}/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`;
 
   try {
-    const data = await fetchWithTimeout(query, {}, API_CONFIG.openmeteo.timeout);
+    const data = await fetchWithTimeout(
+      query,
+      {},
+      API_CONFIG.openmeteo.timeout,
+    );
 
     if (data.results && data.results.length > 0) {
       const result = data.results[0];
@@ -97,7 +101,11 @@ export const fetchOpenMeteoCurrentWeather = async (lat, lon) => {
   const query = `${OPENMETEO_BASE_URL}/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,rain,showers,snowfall,weather_code,cloud_cover,pressure_msl,surface_pressure,wind_speed_10m,wind_direction_10m,wind_gusts_10m&timezone=auto`;
 
   try {
-    const data = await fetchWithTimeout(query, {}, API_CONFIG.openmeteo.timeout);
+    const data = await fetchWithTimeout(
+      query,
+      {},
+      API_CONFIG.openmeteo.timeout,
+    );
 
     if (!data.current) {
       throw new Error("Invalid response from Open-Meteo");
@@ -120,7 +128,10 @@ export const fetchOpenMeteoCurrentWeather = async (lat, lon) => {
       windSpeed: current.wind_speed_10m,
       windDirection: current.wind_direction_10m,
       windGusts: current.wind_gusts_10m,
-      isDay: data.current?.time ? new Date(data.current.time).getHours() >= 6 && new Date(data.current.time).getHours() < 20 : true,
+      isDay: data.current?.time
+        ? new Date(data.current.time).getHours() >= 6 &&
+          new Date(data.current.time).getHours() < 20
+        : true,
       timestamp: current.time,
     };
   } catch (error) {
@@ -139,7 +150,11 @@ export const fetchOpenMeteoForecast = async (lat, lon) => {
   const query = `${OPENMETEO_BASE_URL}/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,apparent_temperature_max,apparent_temperature_min,precipitation_sum,rain_sum,showers_sum,snowfall_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant&timezone=auto&forecast_days=7`;
 
   try {
-    const data = await fetchWithTimeout(query, {}, API_CONFIG.openmeteo.timeout);
+    const data = await fetchWithTimeout(
+      query,
+      {},
+      API_CONFIG.openmeteo.timeout,
+    );
 
     if (!data.daily) {
       throw new Error("Invalid response from Open-Meteo");
@@ -153,7 +168,9 @@ export const fetchOpenMeteoForecast = async (lat, lon) => {
         date: daily.time[i],
         tempMax: Math.round(daily.temperature_2m_max[i]),
         tempMin: Math.round(daily.temperature_2m_min[i]),
-        temp: Math.round((daily.temperature_2m_max[i] + daily.temperature_2m_min[i]) / 2),
+        temp: Math.round(
+          (daily.temperature_2m_max[i] + daily.temperature_2m_min[i]) / 2,
+        ),
         apparentTempMax: Math.round(daily.apparent_temperature_max[i]),
         apparentTempMin: Math.round(daily.apparent_temperature_min[i]),
         weatherCode: daily.weather_code[i],
@@ -187,7 +204,11 @@ export const fetchOpenMeteoHourlyForecast = async (lat, lon, hours = 24) => {
   const query = `${OPENMETEO_BASE_URL}/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation_probability,precipitation,rain,showers,snowfall,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m&timezone=auto&forecast_hours=${hours}`;
 
   try {
-    const data = await fetchWithTimeout(query, {}, API_CONFIG.openmeteo.timeout);
+    const data = await fetchWithTimeout(
+      query,
+      {},
+      API_CONFIG.openmeteo.timeout,
+    );
 
     if (!data.hourly) {
       throw new Error("Invalid response from Open-Meteo");
@@ -233,10 +254,14 @@ export const fetchOpenMeteoWeatherAlerts = async (lat, lon) => {
   const query = `${OPENMETEO_BASE_URL}/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max&timezone=auto&forecast_days=7`;
 
   try {
-    const data = await fetchWithTimeout(query, {}, API_CONFIG.openmeteo.timeout);
+    const data = await fetchWithTimeout(
+      query,
+      {},
+      API_CONFIG.openmeteo.timeout,
+    );
 
     const alerts = [];
-    
+
     // Check for severe weather conditions in the forecast
     if (data.daily && data.daily.weather_code) {
       // Thunderstorm codes
@@ -247,20 +272,20 @@ export const fetchOpenMeteoWeatherAlerts = async (lat, lon) => {
       const rainCodes = [61, 63, 65, 80, 81, 82];
       // Cloudy/overcast codes
       const cloudyCodes = [2, 3, 45, 48];
-      
+
       for (let i = 0; i < data.daily.weather_code.length; i++) {
         const code = data.daily.weather_code[i];
         const tempMax = data.daily.temperature_2m_max?.[i];
         const tempMin = data.daily.temperature_2m_min?.[i];
         const precipitation = data.daily.precipitation_sum?.[i];
         const windSpeed = data.daily.wind_speed_10m_max?.[i];
-        
+
         // Thunderstorm warning
         if (thunderstormCodes.includes(code)) {
           alerts.push({
             id: `openmeteo_alert_${lat}_${lon}_${i}`,
             title: `${getWeatherDescription(code)} Warning`,
-            description: `${getWeatherDescription(code)}. ${code === 96 || code === 99 ? 'Hail expected.' : ''} Seek shelter and avoid open areas.`,
+            description: `${getWeatherDescription(code)}. ${code === 96 || code === 99 ? "Hail expected." : ""} Seek shelter and avoid open areas.`,
             start: data.daily.time[i],
             end: data.daily.time[i],
             sender: "Open-Meteo",
@@ -273,13 +298,13 @@ export const fetchOpenMeteoWeatherAlerts = async (lat, lon) => {
             category: "weather",
           });
         }
-        
+
         // Snow warning - lower threshold
         if (snowCodes.includes(code)) {
           alerts.push({
             id: `openmeteo_snow_${lat}_${lon}_${i}`,
             title: code >= 85 ? "Heavy Snow Warning" : "Snow Warning",
-            description: `${getWeatherDescription(code)}. ${precipitation ? precipitation + 'cm expected.' : ''} Travel may be difficult.`,
+            description: `${getWeatherDescription(code)}. ${precipitation ? precipitation + "cm expected." : ""} Travel may be difficult.`,
             start: data.daily.time[i],
             end: data.daily.time[i],
             sender: "Open-Meteo",
@@ -298,7 +323,7 @@ export const fetchOpenMeteoWeatherAlerts = async (lat, lon) => {
           alerts.push({
             id: `openmeteo_rain_${lat}_${lon}_${i}`,
             title: "Rain Warning",
-            description: `${getWeatherDescription(code)}. ${precipitation ? precipitation + 'mm expected.' : ''} Possible localized flooding.`,
+            description: `${getWeatherDescription(code)}. ${precipitation ? precipitation + "mm expected." : ""} Possible localized flooding.`,
             start: data.daily.time[i],
             end: data.daily.time[i],
             sender: "Open-Meteo",
@@ -311,7 +336,7 @@ export const fetchOpenMeteoWeatherAlerts = async (lat, lon) => {
             category: "weather",
           });
         }
-        
+
         // Extreme heat warning - lower threshold from 38 to 35
         if (tempMax > 35) {
           alerts.push({
@@ -414,7 +439,7 @@ const getWeatherDescription = (code) => {
     96: "Thunderstorm with slight hail",
     99: "Thunderstorm with heavy hail",
   };
-  
+
   return weatherCodes[code] || "Unknown";
 };
 
@@ -454,7 +479,7 @@ export const fetchWeatherWithFallback = async (openWeatherApiKey, lat, lon) => {
     };
   } catch (openMeteoError) {
     console.warn("Open-Meteo failed, trying OpenWeatherMap:", openMeteoError);
-    
+
     // Fallback to OpenWeatherMap if API key is provided
     if (openWeatherApiKey) {
       try {
@@ -468,7 +493,7 @@ export const fetchWeatherWithFallback = async (openWeatherApiKey, lat, lon) => {
         throw new Error("Both weather APIs failed");
       }
     }
-    
+
     throw openMeteoError;
   }
 };
@@ -480,11 +505,15 @@ export const fetchWeatherWithFallback = async (openWeatherApiKey, lat, lon) => {
  * @param {number} lon - Longitude
  * @returns {Promise<Array>} Forecast data
  */
-export const fetchForecastWithFallback = async (openWeatherApiKey, lat, lon) => {
+export const fetchForecastWithFallback = async (
+  openWeatherApiKey,
+  lat,
+  lon,
+) => {
   // Try Open-Meteo first (no API key required)
   try {
     const forecast = await fetchOpenMeteoForecast(lat, lon);
-    return forecast.map(day => ({
+    return forecast.map((day) => ({
       date: day.date,
       temp: day.temp,
       tempMax: day.tempMax,
@@ -495,13 +524,20 @@ export const fetchForecastWithFallback = async (openWeatherApiKey, lat, lon) => 
       source: "Open-Meteo",
     }));
   } catch (openMeteoError) {
-    console.warn("Open-Meteo forecast failed, trying OpenWeatherMap:", openMeteoError);
-    
+    console.warn(
+      "Open-Meteo forecast failed, trying OpenWeatherMap:",
+      openMeteoError,
+    );
+
     // Fallback to OpenWeatherMap if API key is provided
     if (openWeatherApiKey) {
       try {
-        const forecast = await fetchWeatherForecast(openWeatherApiKey, lat, lon);
-        return forecast.map(day => ({
+        const forecast = await fetchWeatherForecast(
+          openWeatherApiKey,
+          lat,
+          lon,
+        );
+        return forecast.map((day) => ({
           ...day,
           source: "OpenWeatherMap",
         }));
@@ -510,7 +546,7 @@ export const fetchForecastWithFallback = async (openWeatherApiKey, lat, lon) => 
         throw new Error("Both forecast APIs failed");
       }
     }
-    
+
     throw openMeteoError;
   }
 };
@@ -534,15 +570,15 @@ export const geocodeWithFallback = async (city, openWeatherApiKey) => {
   } catch (openMeteoError) {
     console.warn("Open-Meteo geocoding failed:", openMeteoError);
   }
-  
+
   // Fallback to OpenWeatherMap if API key is provided
   if (openWeatherApiKey) {
     try {
       const response = await fetch(
-        `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${openWeatherApiKey}`
+        `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(city)}&limit=1&appid=${openWeatherApiKey}`,
       );
       const data = await response.json();
-      
+
       if (data && data.length > 0) {
         return {
           name: data[0].name,
@@ -558,7 +594,7 @@ export const geocodeWithFallback = async (city, openWeatherApiKey) => {
       console.error("OpenWeatherMap geocoding also failed:", openWeatherError);
     }
   }
-  
+
   return null;
 };
 
@@ -816,7 +852,6 @@ export const fetchWeatherAlerts = async (apiKey, lat, lon) => {
  * @returns {Promise<Array>} Array of weather alerts
  */
 const fetchOpenWeatherMapAlerts = async (apiKey, lat, lon) => {
-
   // Use free current weather API instead of One Call 3.0
   const query = `${OPENWEATHER_BASE_URL}/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
 
@@ -1156,7 +1191,9 @@ export const transformWeatherAlertToAlert = (weatherAlert) => ({
             : "Low",
   category: "Weather", // Used for filtering in FullMap
   type: "Weather", // Used for display
-  location: weatherAlert.location || `${weatherAlert.latitude}, ${weatherAlert.longitude}`,
+  location:
+    weatherAlert.location ||
+    `${weatherAlert.latitude}, ${weatherAlert.longitude}`,
   latitude: weatherAlert.latitude,
   longitude: weatherAlert.longitude,
   timestamp: weatherAlert.start,
@@ -1181,22 +1218,25 @@ export const fetchGDACSAlerts = async () => {
     "https://www.gdacs.org/gdacsapi/api/events/geteventlist/FL",
     "https://www.gdacs.org/gdacsapi/api/events/geteventlist/TD",
   ];
-  
+
   const allAlerts = [];
-  
+
   for (const endpoint of endpoints) {
     try {
       // Use CORS proxy for GDACS
       const query = `${CORS_PROXY}${encodeURIComponent(endpoint + "?country=all&from=0&to=20")}`;
       const data = await fetchWithTimeout(query, {}, 10000);
-      
+
       if (data && data.features) {
-        data.features.forEach(feature => {
+        data.features.forEach((feature) => {
           const eventType = feature.properties?.eventtype?.toLowerCase() || "";
           allAlerts.push({
             id: `gdacs_${feature.properties?.id || Math.random()}`,
-            title: feature.properties?.eventname || feature.properties?.eventtype || "Unknown Event",
-            description: `${feature.properties?.eventtype || 'Severe Weather'} - ${feature.properties?.country || 'Unknown location'}. Source: GDACS`,
+            title:
+              feature.properties?.eventname ||
+              feature.properties?.eventtype ||
+              "Unknown Event",
+            description: `${feature.properties?.eventtype || "Severe Weather"} - ${feature.properties?.country || "Unknown location"}. Source: GDACS`,
             level: mapGDACSSeverity(feature.properties?.severity),
             category: "weather",
             type: "Weather",
@@ -1226,7 +1266,7 @@ export const fetchGDACSAlerts = async () => {
  */
 const mapGDACSSeverity = (severity) => {
   if (!severity) return "Medium";
-  
+
   const sev = severity.toString().toLowerCase();
   if (sev.includes("red") || sev.includes("1")) return "Critical";
   if (sev.includes("orange") || sev.includes("2")) return "High";
@@ -1254,9 +1294,9 @@ export const fetchHDXConflictEvents = async () => {
   // HDX may have CORS issues, add fallback conflict regions
   const fallbackConflicts = [
     { country: "Ukraine", lat: 48.38, lon: 31.17, event: "Armed Conflict" },
-    { country: "Syria", lat: 34.80, lon: 38.30, event: "Civil War" },
-    { country: "Yemen", lat: 15.35, lon: 48.30, event: "Armed Conflict" },
-    { country: "Myanmar", lat: 21.90, lon: 95.90, event: "Civil Conflict" },
+    { country: "Syria", lat: 34.8, lon: 38.3, event: "Civil War" },
+    { country: "Yemen", lat: 15.35, lon: 48.3, event: "Armed Conflict" },
+    { country: "Myanmar", lat: 21.9, lon: 95.9, event: "Civil Conflict" },
     { country: "Ethiopia", lat: 9.14, lon: 40.48, event: "Armed Conflict" },
     { country: "Sudan", lat: 12.86, lon: 24.97, event: "Civil Conflict" },
     { country: "Mali", lat: 17.57, lon: -3.99, event: "Armed Conflict" },
@@ -1264,26 +1304,26 @@ export const fetchHDXConflictEvents = async () => {
     { country: "Haiti", lat: 18.97, lon: -72.28, event: "Gang Violence" },
     { country: "Nigeria", lat: 9.08, lon: 8.67, event: "Insurgency" },
   ];
-  
+
   try {
     // Use CORS proxy to bypass CORS restrictions
     const query = `${CORS_PROXY}${encodeURIComponent(HDX_BASE_URL + "/coordination-context/conflict-events?limit=100&app_identifier=" + HDX_APP_IDENTIFIER)}`;
     const response = await fetch(query);
-    
+
     if (!response.ok) {
       throw new Error(`HDX HAPI error: ${response.status}`);
     }
 
     const data = await response.json();
-    
+
     if (!data.data || !Array.isArray(data.data)) {
       throw new Error("Invalid HDX response");
     }
 
-    return data.data.map(event => ({
+    return data.data.map((event) => ({
       id: `hdx_conflict_${event.id || Math.random()}`,
       title: event.event_name || "Conflict Event",
-      description: `${event.event_type || 'Conflict'} in ${event.country_name || 'Unknown'}. Source: HDX`,
+      description: `${event.event_type || "Conflict"} in ${event.country_name || "Unknown"}. Source: HDX`,
       level: mapHDXSeverity(event.event_type),
       category: "war",
       type: "war",
@@ -1325,7 +1365,12 @@ export const fetchHDXIDPs = async () => {
   const fallbackIDPs = [
     { country: "Syria", lat: 35.0, lon: 38.0, count: 7200000 },
     { country: "Colombia", lat: 4.5, lon: -74.0, count: 5800000 },
-    { country: "Democratic Republic of Congo", lat: -2.0, lon: 24.0, count: 5200000 },
+    {
+      country: "Democratic Republic of Congo",
+      lat: -2.0,
+      lon: 24.0,
+      count: 5200000,
+    },
     { country: "Yemen", lat: 15.0, lon: 48.0, count: 4500000 },
     { country: "Afghanistan", lat: 33.0, lon: 65.0, count: 2400000 },
     { country: "Myanmar", lat: 21.0, lon: 96.0, count: 1800000 },
@@ -1339,21 +1384,21 @@ export const fetchHDXIDPs = async () => {
     // Use CORS proxy
     const query = `${CORS_PROXY}${encodeURIComponent(HDX_BASE_URL + "/affected-people/idps?limit=100&app_identifier=" + HDX_APP_IDENTIFIER)}`;
     const response = await fetch(query);
-    
+
     if (!response.ok) {
       throw new Error(`HDX HAPI error: ${response.status}`);
     }
 
     const data = await response.json();
-    
+
     if (!data.data || !Array.isArray(data.data)) {
       throw new Error("Invalid HDX response");
     }
 
-    return data.data.map(idp => ({
+    return data.data.map((idp) => ({
       id: `hdx_idp_${idp.id || Math.random()}`,
-      title: `IDPs in ${idp.country_name || 'Unknown'}`,
-      description: `Internally displaced persons: ${idp.total_individuals?.toLocaleString() || 'Unknown'}. Source: HDX`,
+      title: `IDPs in ${idp.country_name || "Unknown"}`,
+      description: `Internally displaced persons: ${idp.total_individuals?.toLocaleString() || "Unknown"}. Source: HDX`,
       level: "Medium",
       category: "humanitarian",
       type: "humanitarian",
@@ -1393,14 +1438,50 @@ export const fetchHDXRefugees = async () => {
   // Fallback refugee data
   const fallbackRefugees = [
     { country: "Turkey", lat: 39.0, lon: 35.0, count: 3500000, from: "Syria" },
-    { country: "Colombia", lat: 4.5, lon: -74.0, count: 2800000, from: "Venezuela" },
-    { country: "Germany", lat: 51.0, lon: 10.0, count: 2100000, from: "Ukraine" },
-    { country: "Pakistan", lat: 30.0, lon: 70.0, count: 1700000, from: "Afghanistan" },
-    { country: "Iran", lat: 32.0, lon: 53.0, count: 3400000, from: "Afghanistan" },
-    { country: "Uganda", lat: 1.0, lon: 32.0, count: 1500000, from: "DR Congo" },
+    {
+      country: "Colombia",
+      lat: 4.5,
+      lon: -74.0,
+      count: 2800000,
+      from: "Venezuela",
+    },
+    {
+      country: "Germany",
+      lat: 51.0,
+      lon: 10.0,
+      count: 2100000,
+      from: "Ukraine",
+    },
+    {
+      country: "Pakistan",
+      lat: 30.0,
+      lon: 70.0,
+      count: 1700000,
+      from: "Afghanistan",
+    },
+    {
+      country: "Iran",
+      lat: 32.0,
+      lon: 53.0,
+      count: 3400000,
+      from: "Afghanistan",
+    },
+    {
+      country: "Uganda",
+      lat: 1.0,
+      lon: 32.0,
+      count: 1500000,
+      from: "DR Congo",
+    },
     { country: "Lebanon", lat: 33.8, lon: 35.8, count: 1500000, from: "Syria" },
     { country: "Poland", lat: 51.9, lon: 19.1, count: 960000, from: "Ukraine" },
-    { country: "Ethiopia", lat: 9.0, lon: 40.0, count: 900000, from: "South Sudan" },
+    {
+      country: "Ethiopia",
+      lat: 9.0,
+      lon: 40.0,
+      count: 900000,
+      from: "South Sudan",
+    },
     { country: "Kenya", lat: -1.0, lon: 38.0, count: 550000, from: "Somalia" },
   ];
 
@@ -1408,21 +1489,21 @@ export const fetchHDXRefugees = async () => {
     // Use CORS proxy
     const query = `${CORS_PROXY}${encodeURIComponent(HDX_BASE_URL + "/affected-people/refugees-persons-of-concern?limit=100&app_identifier=" + HDX_APP_IDENTIFIER)}`;
     const response = await fetch(query);
-    
+
     if (!response.ok) {
       throw new Error(`HDX HAPI error: ${response.status}`);
     }
 
     const data = await response.json();
-    
+
     if (!data.data || !Array.isArray(data.data)) {
       throw new Error("Invalid HDX response");
     }
 
-    return data.data.map(refugee => ({
+    return data.data.map((refugee) => ({
       id: `hdx_refugee_${refugee.id || Math.random()}`,
-      title: `Refugees in ${refugee.country_name || 'Unknown'}`,
-      description: `Refugees from ${refugee.asylum_country_name || 'Unknown'}: ${refugee.total_refugees?.toLocaleString() || 'Unknown'}. Source: HDX`,
+      title: `Refugees in ${refugee.country_name || "Unknown"}`,
+      description: `Refugees from ${refugee.asylum_country_name || "Unknown"}: ${refugee.total_refugees?.toLocaleString() || "Unknown"}. Source: HDX`,
       level: "Medium",
       category: "humanitarian",
       type: "humanitarian",
@@ -1482,21 +1563,21 @@ export const fetchHDXNationalRisk = async () => {
     // Use CORS proxy
     const query = `${CORS_PROXY}${encodeURIComponent(HDX_BASE_URL + "/coordination-context/national-risk?limit=100&app_identifier=" + HDX_APP_IDENTIFIER)}`;
     const response = await fetch(query);
-    
+
     if (!response.ok) {
       throw new Error(`HDX HAPI error: ${response.status}`);
     }
 
     const data = await response.json();
-    
+
     if (!data.data || !Array.isArray(data.data)) {
       throw new Error("Invalid HDX response");
     }
 
-    return data.data.map(risk => ({
+    return data.data.map((risk) => ({
       id: `hdx_risk_${risk.id || Math.random()}`,
-      title: `Risk Alert: ${risk.country_name || 'Unknown'}`,
-      description: `National Risk: ${risk.risk_class || 'Unknown'}. Source: HDX`,
+      title: `Risk Alert: ${risk.country_name || "Unknown"}`,
+      description: `National Risk: ${risk.risk_class || "Unknown"}. Source: HDX`,
       level: mapHDXRiskLevel(risk.risk_class),
       category: "war",
       type: "war",
@@ -1535,10 +1616,14 @@ export const fetchHDXNationalRisk = async () => {
  */
 const mapHDXSeverity = (eventType) => {
   if (!eventType) return "Medium";
-  
+
   const type = eventType.toLowerCase();
-  
-  if (type.includes("war") || type.includes("battle") || type.includes("massacre")) {
+
+  if (
+    type.includes("war") ||
+    type.includes("battle") ||
+    type.includes("massacre")
+  ) {
     return "Critical";
   }
   if (type.includes("violence") || type.includes("explosion")) {
@@ -1547,7 +1632,7 @@ const mapHDXSeverity = (eventType) => {
   if (type.includes("protest") || type.includes("riot")) {
     return "Medium";
   }
-  
+
   return "Low";
 };
 
@@ -1558,9 +1643,9 @@ const mapHDXSeverity = (eventType) => {
  */
 const mapHDXRiskLevel = (riskClass) => {
   if (!riskClass) return "Medium";
-  
+
   const risk = riskClass.toLowerCase();
-  
+
   if (risk.includes("very high") || risk.includes("extreme")) {
     return "Critical";
   }
@@ -1570,7 +1655,7 @@ const mapHDXRiskLevel = (riskClass) => {
   if (risk.includes("medium")) {
     return "Medium";
   }
-  
+
   return "Low";
 };
 
@@ -1593,19 +1678,21 @@ const EONET_BASE_URL = "https://eonet.gsfc.nasa.gov/api/v3";
  */
 const fetchEONETEventDetails = async (eventId) => {
   try {
-    const query = `${CORS_PROXY}${encodeURIComponent(EONET_BASE_URL + '/events/' + eventId)}`;
+    const query = `${CORS_PROXY}${encodeURIComponent(EONET_BASE_URL + "/events/" + eventId)}`;
     const response = await fetch(query);
-    
+
     if (!response.ok) return [];
-    
+
     const data = await response.json();
-    
+
     if (data && data.sources && Array.isArray(data.sources)) {
       return data.sources
-        .map(source => source.url)
-        .filter(url => url && typeof url === 'string' && url.startsWith('http'));
+        .map((source) => source.url)
+        .filter(
+          (url) => url && typeof url === "string" && url.startsWith("http"),
+        );
     }
-    
+
     return [];
   } catch (error) {
     console.warn(`Failed to fetch EONET details for ${eventId}:`, error);
@@ -1616,37 +1703,98 @@ const fetchEONETEventDetails = async (eventId) => {
 export const fetchEONETEvents = async (days = 30, limit = 50) => {
   // Fallback EONET data
   const fallbackEvents = [
-    { title: "California Wildfires", category: "wildfires", lat: 36.5, lon: -119.0, country: "USA" },
-    { title: "Australia Bushfires", category: "wildfires", lat: -33.9, lon: 151.2, country: "Australia" },
-    { title: "Amazon Deforestation Fire", category: "wildfires", lat: -3.0, lon: -60.0, country: "Brazil" },
-    { title: "Hurricane Season", category: "severeStorms", lat: 25.0, lon: -80.0, country: "USA" },
-    { title: "Mediterranean Floods", category: "floods", lat: 41.0, lon: 12.0, country: "Italy" },
-    { title: "Japan Typhoon", category: "severeStorms", lat: 35.7, lon: 139.7, country: "Japan" },
-    { title: "Chile Volcanic Eruption", category: "volcanoes", lat: -23.3, lon: -67.5, country: "Chile" },
-    { title: "Hawaii Lava Flow", category: "volcanoes", lat: 19.4, lon: -155.3, country: "USA" },
-    { title: "European Heatwave", category: "severeStorms", lat: 48.8, lon: 2.3, country: "France" },
-    { title: "Canada Wildfires", category: "wildfires", lat: 45.0, lon: -75.0, country: "Canada" },
+    {
+      title: "California Wildfires",
+      category: "wildfires",
+      lat: 36.5,
+      lon: -119.0,
+      country: "USA",
+    },
+    {
+      title: "Australia Bushfires",
+      category: "wildfires",
+      lat: -33.9,
+      lon: 151.2,
+      country: "Australia",
+    },
+    {
+      title: "Amazon Deforestation Fire",
+      category: "wildfires",
+      lat: -3.0,
+      lon: -60.0,
+      country: "Brazil",
+    },
+    {
+      title: "Hurricane Season",
+      category: "severeStorms",
+      lat: 25.0,
+      lon: -80.0,
+      country: "USA",
+    },
+    {
+      title: "Mediterranean Floods",
+      category: "floods",
+      lat: 41.0,
+      lon: 12.0,
+      country: "Italy",
+    },
+    {
+      title: "Japan Typhoon",
+      category: "severeStorms",
+      lat: 35.7,
+      lon: 139.7,
+      country: "Japan",
+    },
+    {
+      title: "Chile Volcanic Eruption",
+      category: "volcanoes",
+      lat: -23.3,
+      lon: -67.5,
+      country: "Chile",
+    },
+    {
+      title: "Hawaii Lava Flow",
+      category: "volcanoes",
+      lat: 19.4,
+      lon: -155.3,
+      country: "USA",
+    },
+    {
+      title: "European Heatwave",
+      category: "severeStorms",
+      lat: 48.8,
+      lon: 2.3,
+      country: "France",
+    },
+    {
+      title: "Canada Wildfires",
+      category: "wildfires",
+      lat: 45.0,
+      lon: -75.0,
+      country: "Canada",
+    },
   ];
 
   try {
     // Use CORS proxy for EONET
     const query = `${CORS_PROXY}${encodeURIComponent(EONET_BASE_URL + `/events?status=open&days=${days}&limit=${limit}`)}`;
     const response = await fetch(query);
-    
+
     if (!response.ok) {
       throw new Error(`EONET error: ${response.status}`);
     }
 
     const data = await response.json();
-    
+
     if (!data.events || !Array.isArray(data.events)) {
       throw new Error("Invalid EONET response");
     }
 
     // Process summary events
-    const summaryEvents = data.events.map(event => {
+    const summaryEvents = data.events.map((event) => {
       // Extract coordinates from geometry
-      let lat = 0, lon = 0;
+      let lat = 0,
+        lon = 0;
       if (event.geometry && event.geometry.length > 0) {
         const geo = event.geometry[0];
         if (geo && geo.coordinates) {
@@ -1657,23 +1805,26 @@ export const fetchEONETEvents = async (days = 30, limit = 50) => {
       }
 
       // Get category
-      const category = event.categories && event.categories.length > 0 
-        ? event.categories[0].id 
-        : "unknown";
+      const category =
+        event.categories && event.categories.length > 0
+          ? event.categories[0].id
+          : "unknown";
 
       return {
         id: `eonet_${event.id || Math.random()}`,
         title: event.title || "EONET Event",
-        description: event.description || `${category} event. Source: NASA EONET`,
+        description:
+          event.description || `${category} event. Source: NASA EONET`,
         level: mapEONETSeverity(category),
         category: mapEONETCategory(category),
         type: mapEONETCategory(category),
         location: event.title || "Unknown",
         latitude: lat,
         longitude: lon,
-        timestamp: event.geometry && event.geometry.length > 0 
-          ? event.geometry[0].date 
-          : new Date().toISOString(),
+        timestamp:
+          event.geometry && event.geometry.length > 0
+            ? event.geometry[0].date
+            : new Date().toISOString(),
         source: "NASA EONET",
         severity: mapEONETSeverity(category),
         eventCategory: category,
@@ -1683,11 +1834,13 @@ export const fetchEONETEvents = async (days = 30, limit = 50) => {
 
     // Fetch details for top 10 recent events to extract public sources (parallel, with timeout)
     const topEvents = summaryEvents.slice(0, 10);
-    const detailsPromises = topEvents.map(event => 
-      fetchEONETEventDetails(event.id.replace('eonet_', '')).then(publicSources => ({
-        ...event,
-        sources: publicSources.length > 0 ? publicSources : [event.link]
-      }))
+    const detailsPromises = topEvents.map((event) =>
+      fetchEONETEventDetails(event.id.replace("eonet_", "")).then(
+        (publicSources) => ({
+          ...event,
+          sources: publicSources.length > 0 ? publicSources : [event.link],
+        }),
+      ),
     );
 
     const detailedEvents = await Promise.allSettled(detailsPromises);
@@ -1695,17 +1848,19 @@ export const fetchEONETEvents = async (days = 30, limit = 50) => {
     // Mix detailed (top 10) with summary (rest), prioritize detailed
     const finalEvents = [];
     detailedEvents.forEach((result, index) => {
-      if (result.status === 'fulfilled') {
+      if (result.status === "fulfilled") {
         finalEvents[index] = result.value;
       }
     });
 
     // Fill remaining with summary (beyond top 10)
     const remainingSummary = summaryEvents.slice(10);
-    finalEvents.push(...remainingSummary.map(event => ({
-      ...event,
-      sources: [event.link]
-    })));
+    finalEvents.push(
+      ...remainingSummary.map((event) => ({
+        ...event,
+        sources: [event.link],
+      })),
+    );
 
     return finalEvents.slice(0, limit);
   } catch (error) {
@@ -1724,7 +1879,7 @@ export const fetchEONETEvents = async (days = 30, limit = 50) => {
       source: "NASA EONET",
       severity: mapEONETSeverity(evt.category),
       eventCategory: evt.category,
-      sources: [EONET_BASE_URL + '/events/EONET_' + index], // Fallback API-like
+      sources: [EONET_BASE_URL + "/events/EONET_" + index], // Fallback API-like
     }));
   }
 };
@@ -1736,13 +1891,17 @@ export const fetchEONETEvents = async (days = 30, limit = 50) => {
  */
 const mapEONETCategory = (category) => {
   if (!category) return "general";
-  
+
   const cat = category.toLowerCase();
-  
+
   if (cat.includes("fire") || cat.includes("wildfire")) {
     return "weather";
   }
-  if (cat.includes("storm") || cat.includes("hurricane") || cat.includes("typhoon")) {
+  if (
+    cat.includes("storm") ||
+    cat.includes("hurricane") ||
+    cat.includes("typhoon")
+  ) {
     return "weather";
   }
   if (cat.includes("flood")) {
@@ -1757,7 +1916,7 @@ const mapEONETCategory = (category) => {
   if (cat.includes("ice")) {
     return "weather";
   }
-  
+
   return "weather";
 };
 
@@ -1768,10 +1927,14 @@ const mapEONETCategory = (category) => {
  */
 const mapEONETSeverity = (category) => {
   if (!category) return "Medium";
-  
+
   const cat = category.toLowerCase();
-  
-  if (cat.includes("volcano") || cat.includes("hurricane") || cat.includes("typhoon")) {
+
+  if (
+    cat.includes("volcano") ||
+    cat.includes("hurricane") ||
+    cat.includes("typhoon")
+  ) {
     return "High";
   }
   if (cat.includes("fire") || cat.includes("flood") || cat.includes("storm")) {
@@ -1780,7 +1943,7 @@ const mapEONETSeverity = (category) => {
   if (cat.includes("landslide")) {
     return "Medium";
   }
-  
+
   return "Low";
 };
 
@@ -1802,8 +1965,8 @@ export const fetchWorldAPINews = async (limit = 50) => {
   try {
     const response = await fetch(query, {
       headers: {
-        "Authorization": `Bearer ${WORLDAPI_KEY}`
-      }
+        Authorization: `Bearer ${WORLDAPI_KEY}`,
+      },
     });
 
     if (!response.ok) {
@@ -1811,12 +1974,12 @@ export const fetchWorldAPINews = async (limit = 50) => {
     }
 
     const data = await response.json();
-    
+
     if (!data.reports || !Array.isArray(data.reports)) {
       return [];
     }
 
-    return data.reports.map(report => ({
+    return data.reports.map((report) => ({
       id: `worldapi_${report.id || Math.random()}`,
       title: report.title || "Unknown Event",
       description: report.summary || report.title || "",
@@ -1845,21 +2008,126 @@ export const fetchWorldAPINews = async (limit = 50) => {
 export const fetchAllWorldAPINews = async (limit = 100) => {
   // Fallback news data in case WorldAPI fails
   const fallbackNews = [
-    { title: "Ukraine-Russia Conflict Updates", city: "Kyiv", country: "Ukraine", lat: 50.45, lon: 30.52, category: "security" },
-    { title: "Gaza Strip Humanitarian Crisis", city: "Gaza", country: "Palestine", lat: 31.35, lon: 34.31, category: "security" },
-    { title: "Sudan Civil War Developments", city: "Khartoum", country: "Sudan", lat: 15.50, lon: 32.56, category: "security" },
-    { title: "Myanmar Civil Unrest", city: "Naypyidaw", country: "Myanmar", lat: 19.75, lon: 96.10, category: "politics" },
-    { title: "Ethiopia Regional Tensions", city: "Addis Ababa", country: "Ethiopia", lat: 9.03, lon: 38.76, category: "security" },
-    { title: "Haiti Gang Violence", city: "Port-au-Prince", country: "Haiti", lat: 18.53, lon: -72.33, category: "security" },
-    { title: "Syria Reconstruction Efforts", city: "Damascus", country: "Syria", lat: 33.51, lon: 36.29, category: "politics" },
-    { title: "Yemen Peace Talks", city: "Sanaa", country: "Yemen", lat: 15.35, lon: 44.21, category: "politics" },
-    { title: "Climate Summit Negotiations", city: "New York", country: "USA", lat: 40.71, lon: -74.01, category: "climate" },
-    { title: "EU Migration Policy Debate", city: "Brussels", country: "Belgium", lat: 50.85, lon: 4.35, category: "politics" },
-    { title: "North Korea Military Exercises", city: "Pyongyang", country: "North Korea", lat: 39.04, lon: 125.75, category: "security" },
-    { title: "Brazil Flooding Crisis", city: "Rio de Janeiro", country: "Brazil", lat: -22.91, lon: -43.17, category: "climate" },
-    { title: "Nigeria Regional Security", city: "Abuja", country: "Nigeria", lat: 9.08, lon: 7.40, category: "security" },
-    { title: "Afghanistan Economic Crisis", city: "Kabul", country: "Afghanistan", lat: 34.53, lon: 69.17, category: "politics" },
-    { title: "South Africa Power Crisis", city: "Johannesburg", country: "South Africa", lat: -26.20, lon: 28.04, category: "politics" },
+    {
+      title: "Ukraine-Russia Conflict Updates",
+      city: "Kyiv",
+      country: "Ukraine",
+      lat: 50.45,
+      lon: 30.52,
+      category: "security",
+    },
+    {
+      title: "Gaza Strip Humanitarian Crisis",
+      city: "Gaza",
+      country: "Palestine",
+      lat: 31.35,
+      lon: 34.31,
+      category: "security",
+    },
+    {
+      title: "Sudan Civil War Developments",
+      city: "Khartoum",
+      country: "Sudan",
+      lat: 15.5,
+      lon: 32.56,
+      category: "security",
+    },
+    {
+      title: "Myanmar Civil Unrest",
+      city: "Naypyidaw",
+      country: "Myanmar",
+      lat: 19.75,
+      lon: 96.1,
+      category: "politics",
+    },
+    {
+      title: "Ethiopia Regional Tensions",
+      city: "Addis Ababa",
+      country: "Ethiopia",
+      lat: 9.03,
+      lon: 38.76,
+      category: "security",
+    },
+    {
+      title: "Haiti Gang Violence",
+      city: "Port-au-Prince",
+      country: "Haiti",
+      lat: 18.53,
+      lon: -72.33,
+      category: "security",
+    },
+    {
+      title: "Syria Reconstruction Efforts",
+      city: "Damascus",
+      country: "Syria",
+      lat: 33.51,
+      lon: 36.29,
+      category: "politics",
+    },
+    {
+      title: "Yemen Peace Talks",
+      city: "Sanaa",
+      country: "Yemen",
+      lat: 15.35,
+      lon: 44.21,
+      category: "politics",
+    },
+    {
+      title: "Climate Summit Negotiations",
+      city: "New York",
+      country: "USA",
+      lat: 40.71,
+      lon: -74.01,
+      category: "climate",
+    },
+    {
+      title: "EU Migration Policy Debate",
+      city: "Brussels",
+      country: "Belgium",
+      lat: 50.85,
+      lon: 4.35,
+      category: "politics",
+    },
+    {
+      title: "North Korea Military Exercises",
+      city: "Pyongyang",
+      country: "North Korea",
+      lat: 39.04,
+      lon: 125.75,
+      category: "security",
+    },
+    {
+      title: "Brazil Flooding Crisis",
+      city: "Rio de Janeiro",
+      country: "Brazil",
+      lat: -22.91,
+      lon: -43.17,
+      category: "climate",
+    },
+    {
+      title: "Nigeria Regional Security",
+      city: "Abuja",
+      country: "Nigeria",
+      lat: 9.08,
+      lon: 7.4,
+      category: "security",
+    },
+    {
+      title: "Afghanistan Economic Crisis",
+      city: "Kabul",
+      country: "Afghanistan",
+      lat: 34.53,
+      lon: 69.17,
+      category: "politics",
+    },
+    {
+      title: "South Africa Power Crisis",
+      city: "Johannesburg",
+      country: "South Africa",
+      lat: -26.2,
+      lon: 28.04,
+      category: "politics",
+    },
   ];
 
   try {
@@ -1868,8 +2136,8 @@ export const fetchAllWorldAPINews = async (limit = 100) => {
 
     const response = await fetch(query, {
       headers: {
-        "Authorization": `Bearer ${WORLDAPI_KEY}`
-      }
+        Authorization: `Bearer ${WORLDAPI_KEY}`,
+      },
     });
 
     if (!response.ok) {
@@ -1877,12 +2145,12 @@ export const fetchAllWorldAPINews = async (limit = 100) => {
     }
 
     const data = await response.json();
-    
+
     if (!data.reports || !Array.isArray(data.reports)) {
       throw new Error("Invalid WorldAPI response");
     }
 
-    return data.reports.map(report => ({
+    return data.reports.map((report) => ({
       id: `worldapi_${report.id || Math.random()}`,
       title: report.title || "Unknown Event",
       description: report.summary || report.title || "",
@@ -1923,22 +2191,35 @@ export const fetchAllWorldAPINews = async (limit = 100) => {
  */
 const mapWorldAPICategory = (category) => {
   if (!category) return "general";
-  
+
   const cat = category.toLowerCase();
-  
-  if (cat.includes("security") || cat.includes("military") || cat.includes("war") || cat.includes("conflict")) {
+
+  if (
+    cat.includes("security") ||
+    cat.includes("military") ||
+    cat.includes("war") ||
+    cat.includes("conflict")
+  ) {
     return "war";
   }
-  if (cat.includes("politics") || cat.includes("protest") || cat.includes("unrest")) {
+  if (
+    cat.includes("politics") ||
+    cat.includes("protest") ||
+    cat.includes("unrest")
+  ) {
     return "civil";
   }
-  if (cat.includes("climate") || cat.includes("disaster") || cat.includes("weather")) {
+  if (
+    cat.includes("climate") ||
+    cat.includes("disaster") ||
+    cat.includes("weather")
+  ) {
     return "weather";
   }
   if (cat.includes("crime") || cat.includes("terror")) {
     return "security";
   }
-  
+
   return "general";
 };
 
@@ -1951,25 +2232,43 @@ const mapWorldAPISeverity = (report) => {
   const title = (report.title || "").toLowerCase();
   const summary = (report.summary || "").toLowerCase();
   const text = title + " " + summary;
-  
+
   // High severity keywords
-  if (text.includes("war") || text.includes("conflict") || text.includes("attack") || 
-      text.includes("killed") || text.includes("death") || text.includes("massacre") ||
-      text.includes("terror") || text.includes("bomb") || text.includes("drone")) {
+  if (
+    text.includes("war") ||
+    text.includes("conflict") ||
+    text.includes("attack") ||
+    text.includes("killed") ||
+    text.includes("death") ||
+    text.includes("massacre") ||
+    text.includes("terror") ||
+    text.includes("bomb") ||
+    text.includes("drone")
+  ) {
     return "Critical";
   }
-  
+
   // Medium severity keywords
-  if (text.includes("clash") || text.includes("protest") || text.includes("violence") ||
-      text.includes("injured") || text.includes("crisis") || text.includes("invasion")) {
+  if (
+    text.includes("clash") ||
+    text.includes("protest") ||
+    text.includes("violence") ||
+    text.includes("injured") ||
+    text.includes("crisis") ||
+    text.includes("invasion")
+  ) {
     return "High";
   }
-  
+
   // Lower severity
-  if (text.includes("sanction") || text.includes("tension") || text.includes("threat")) {
+  if (
+    text.includes("sanction") ||
+    text.includes("tension") ||
+    text.includes("threat")
+  ) {
     return "Medium";
   }
-  
+
   return "Low";
 };
 
@@ -1984,11 +2283,16 @@ const mapWorldAPISeverity = (report) => {
  */
 export const fetchConflictEvents = async () => {
   const events = [];
-  
+
   // Add known conflict regions as alerts (from publicly available data)
   // These are active conflict zones based on news/reports
   const conflictRegions = [
-    { name: "Ukraine - Eastern Front", lat: 48.5, lon: 35.0, country: "Ukraine" },
+    {
+      name: "Ukraine - Eastern Front",
+      lat: 48.5,
+      lon: 35.0,
+      country: "Ukraine",
+    },
     { name: "Gaza Strip", lat: 31.4, lon: 34.3, country: "Palestine" },
     { name: "Sudan - Darfur", lat: 12.8, lon: 24.9, country: "Sudan" },
     { name: "Myanmar - Sagaing", lat: 21.9, lon: 95.9, country: "Myanmar" },
@@ -2004,7 +2308,7 @@ export const fetchConflictEvents = async () => {
     { name: "Yemen", lat: 15.0, lon: 48.0, country: "Yemen" },
     { name: "South Sudan", lat: 7.0, lon: 30.0, country: "South Sudan" },
   ];
-  
+
   conflictRegions.forEach((region, index) => {
     events.push({
       id: `conflict_region_${index}`,
@@ -2021,7 +2325,7 @@ export const fetchConflictEvents = async () => {
       severity: "High",
     });
   });
-  
+
   return events;
 };
 
@@ -2031,22 +2335,82 @@ export const fetchConflictEvents = async () => {
  */
 export const fetchCivilUnrestEvents = async () => {
   const events = [];
-  
+
   try {
     // Known regions with recent civil unrest (based on public news)
     const unrestRegions = [
-      { name: "Kenya - Nairobi", lat: -1.3, lon: 36.8, country: "Kenya", type: "Protests" },
-      { name: "Chile - Santiago", lat: -33.4, lon: -70.6, country: "Chile", type: "Civil Unrest" },
-      { name: "France - Paris", lat: 48.9, lon: 2.4, country: "France", type: "Protests" },
-      { name: "Venezuela - Caracas", lat: 10.5, lon: -66.9, country: "Venezuela", type: "Civil Unrest" },
-      { name: "Bangladesh - Dhaka", lat: 23.8, lon: 90.4, country: "Bangladesh", type: "Protests" },
-      { name: "Peru - Lima", lat: -12.0, lon: -77.0, country: "Peru", type: "Civil Unrest" },
-      { name: "Nigeria - Lagos", lat: 6.5, lon: 3.4, country: "Nigeria", type: "Protests" },
-      { name: "Indonesia - Jakarta", lat: -6.2, lon: 106.8, country: "Indonesia", type: "Protests" },
-      { name: "South Africa - Johannesburg", lat: -26.2, lon: 28.0, country: "South Africa", type: "Civil Unrest" },
-      { name: "Argentina - Buenos Aires", lat: -34.6, lon: -58.4, country: "Argentina", type: "Protests" },
+      {
+        name: "Kenya - Nairobi",
+        lat: -1.3,
+        lon: 36.8,
+        country: "Kenya",
+        type: "Protests",
+      },
+      {
+        name: "Chile - Santiago",
+        lat: -33.4,
+        lon: -70.6,
+        country: "Chile",
+        type: "Civil Unrest",
+      },
+      {
+        name: "France - Paris",
+        lat: 48.9,
+        lon: 2.4,
+        country: "France",
+        type: "Protests",
+      },
+      {
+        name: "Venezuela - Caracas",
+        lat: 10.5,
+        lon: -66.9,
+        country: "Venezuela",
+        type: "Civil Unrest",
+      },
+      {
+        name: "Bangladesh - Dhaka",
+        lat: 23.8,
+        lon: 90.4,
+        country: "Bangladesh",
+        type: "Protests",
+      },
+      {
+        name: "Peru - Lima",
+        lat: -12.0,
+        lon: -77.0,
+        country: "Peru",
+        type: "Civil Unrest",
+      },
+      {
+        name: "Nigeria - Lagos",
+        lat: 6.5,
+        lon: 3.4,
+        country: "Nigeria",
+        type: "Protests",
+      },
+      {
+        name: "Indonesia - Jakarta",
+        lat: -6.2,
+        lon: 106.8,
+        country: "Indonesia",
+        type: "Protests",
+      },
+      {
+        name: "South Africa - Johannesburg",
+        lat: -26.2,
+        lon: 28.0,
+        country: "South Africa",
+        type: "Civil Unrest",
+      },
+      {
+        name: "Argentina - Buenos Aires",
+        lat: -34.6,
+        lon: -58.4,
+        country: "Argentina",
+        type: "Protests",
+      },
     ];
-    
+
     unrestRegions.forEach((region, index) => {
       events.push({
         id: `unrest_${index}`,
@@ -2063,11 +2427,10 @@ export const fetchCivilUnrestEvents = async () => {
         severity: "Medium",
       });
     });
-    
   } catch (error) {
     console.error("Error fetching civil unrest events:", error);
   }
-  
+
   return events;
 };
 
@@ -2231,7 +2594,11 @@ export const fetchAllAlertData = async (options = {}) => {
   // Fetch weather alerts - Open-Meteo primary (no API key required), OpenWeatherMap fallback
   if (weather.lat && weather.lon) {
     try {
-      const weatherData = await fetchWeatherAlerts(weather.apiKey, weather.lat, weather.lon);
+      const weatherData = await fetchWeatherAlerts(
+        weather.apiKey,
+        weather.lat,
+        weather.lon,
+      );
       alerts.push(...weatherData.map(transformWeatherAlertToAlert));
     } catch (error) {
       console.error("Failed to fetch weather alerts:", error);
@@ -2239,4 +2606,314 @@ export const fetchAllAlertData = async (options = {}) => {
   }
 
   return alerts;
+};
+
+// REAL NEWS AGGREGATION
+
+const normalizeNewsText = (value = "") =>
+  String(value || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const formatNewsDate = (value) => {
+  if (!value) return "Recently";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Recently";
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+};
+
+const guessNewsTopic = (title = "", description = "") => {
+  const combo = `${title} ${description}`.toLowerCase();
+
+  if (
+    /(security|war|conflict|military|attack|violence|bomb|border|unrest)/i.test(
+      combo,
+    )
+  )
+    return "security";
+  if (
+    /(weather|storm|flood|heat|wildfire|drought|hurricane|climate|rain)/i.test(
+      combo,
+    )
+  )
+    return "weather";
+  if (
+    /(environment|climate|pollution|forest|ocean|wildlife|ecosystem)/i.test(
+      combo,
+    )
+  )
+    return "environment";
+  if (/(health|medical|virus|disease|hospital|vaccine|outbreak)/i.test(combo))
+    return "health";
+  if (/(technology|ai|cyber|software|internet|digital|startup)/i.test(combo))
+    return "technology";
+  if (
+    /(humanitarian|aid|refugee|relief|shelter|food|displacement)/i.test(combo)
+  )
+    return "humanitarian";
+  if (/(election|government|policy|diplomacy|summit|regional)/i.test(combo))
+    return "conflict";
+
+  return "general";
+};
+
+const normalizeNewsArticle = (article = {}) => {
+  const title = normalizeNewsText(
+    article.title || article.headline || "Untitled report",
+  );
+  const summary = normalizeNewsText(
+    article.description ||
+      article.summary ||
+      article.snippet ||
+      article.content ||
+      article.body ||
+      article.trailText ||
+      "",
+  );
+  const publishedAt =
+    article.publishedAt ||
+    article.published_at ||
+    article.date ||
+    article.webPublicationDate ||
+    new Date().toISOString();
+  const sourceName =
+    article.sourceName || article.source || article.provider || "Public report";
+
+  return {
+    id: article.id || `${sourceName}-${title}-${publishedAt}`,
+    title,
+    summary:
+      summary ||
+      `${title} is being tracked by G.R.O.A monitoring feeds and cross-checked across multiple public sources.`,
+    description: summary,
+    content: summary,
+    source: sourceName,
+    sources:
+      Array.isArray(article.sources) && article.sources.length
+        ? article.sources
+        : [sourceName],
+    date: formatNewsDate(publishedAt),
+    publishedAt,
+    url: article.url || article.webUrl || article.link || "#",
+    topic: article.topic || guessNewsTopic(title, summary),
+    time:
+      Date.now() - new Date(publishedAt).getTime() <= 86400000
+        ? "today"
+        : Date.now() - new Date(publishedAt).getTime() <= 604800000
+          ? "week"
+          : "older",
+    significance:
+      article.significance ||
+      (guessNewsTopic(title, summary) === "security" ? 5 : 3),
+  };
+};
+
+const dedupeNews = (articles = []) => {
+  const seen = new Set();
+
+  return articles.filter((article) => {
+    const key =
+      `${article.title}|${article.source}|${article.url}`.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+export const fetchGuardianNews = async (
+  query = "global humanitarian crisis climate security",
+  pageSize = 6,
+) => {
+  const endpoint = `https://content.guardianapis.com/search?q=${encodeURIComponent(query)}&order-by=newest&show-fields=trailText,bodyText,headline&api-key=test&page-size=${pageSize}`;
+
+  try {
+    const response = await fetchWithTimeout(endpoint, {}, 15000);
+    if (!response.response || !Array.isArray(response.response.results))
+      return [];
+
+    return response.response.results.map((item) =>
+      normalizeNewsArticle({
+        id: item.id,
+        title: item.fields?.headline || item.webTitle,
+        description:
+          item.fields?.trailText || item.fields?.bodyText || item.webTitle,
+        content:
+          item.fields?.bodyText || item.fields?.trailText || item.webTitle,
+        url: item.webUrl,
+        source: "The Guardian",
+        publishedAt: item.webPublicationDate,
+        sources: ["The Guardian"],
+      }),
+    );
+  } catch (error) {
+    console.warn("Guardian fetch failed:", error);
+    return [];
+  }
+};
+
+export const fetchNewsApiNews = async (
+  query = "global humanitarian crisis climate security",
+  pageSize = 4,
+) => {
+  const apiKey =
+    typeof import.meta !== "undefined" ? import.meta.env?.VITE_NEWSAPI_KEY : "";
+  if (!apiKey) return [];
+
+  const endpoint = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=${pageSize}&apiKey=${apiKey}`;
+
+  try {
+    const response = await fetchWithTimeout(endpoint, {}, 15000);
+    if (!response.articles || !Array.isArray(response.articles)) return [];
+
+    return response.articles.map((item) =>
+      normalizeNewsArticle({
+        id: item.url,
+        title: item.title,
+        description: item.description,
+        content: item.content,
+        url: item.url,
+        source: item.source?.name || "NewsAPI",
+        publishedAt: item.publishedAt,
+        sources: item.source?.name ? [item.source.name] : ["NewsAPI"],
+      }),
+    );
+  } catch (error) {
+    console.warn("NewsAPI fetch failed:", error);
+    return [];
+  }
+};
+
+export const fetchGNewsArticles = async (
+  query = "global humanitarian crisis climate security",
+  pageSize = 4,
+) => {
+  const apiKey =
+    typeof import.meta !== "undefined"
+      ? import.meta.env?.VITE_GNEWS_API_KEY
+      : "";
+  if (!apiKey) return [];
+
+  const endpoint = `https://gnews.io/api/v4/search?q=${encodeURIComponent(query)}&lang=en&country=us&max=${pageSize}&apikey=${apiKey}`;
+
+  try {
+    const response = await fetchWithTimeout(endpoint, {}, 15000);
+    if (!response.articles || !Array.isArray(response.articles)) return [];
+
+    return response.articles.map((item) =>
+      normalizeNewsArticle({
+        id: item.url,
+        title: item.title,
+        description: item.description,
+        content: item.content,
+        url: item.url,
+        source: item.source?.name || "GNews",
+        publishedAt: item.publishedAt,
+        sources: item.source?.name ? [item.source.name] : ["GNews"],
+      }),
+    );
+  } catch (error) {
+    console.warn("GNews fetch failed:", error);
+    return [];
+  }
+};
+
+export const fetchGdeltNews = async (
+  query = "humanitarian OR climate OR security OR conflict OR disaster OR outbreak",
+  pageSize = 12,
+) => {
+  // GDELT supports OR groups in parentheses.
+  const searchQuery = query.includes(" OR ") ? `(${query})` : query;
+
+  const params = new URLSearchParams({
+    query: searchQuery,
+    mode: "artlist",
+    format: "json",
+    maxrecords: String(Math.min(pageSize, 75)),
+    sort: "datedesc",
+    timespan: "7d",
+  });
+
+  const endpoint = `https://api.gdeltproject.org/api/v2/doc/doc?${params.toString()}`;
+
+  try {
+    const response = await fetchWithTimeout(endpoint, {}, 15000);
+    const articles = response.articles;
+
+    if (!Array.isArray(articles)) {
+      console.warn("[GDELT] Unexpected API response:", response);
+      return [];
+    }
+
+    return articles.map((item) => {
+      // GDELT dates commonly look like 20261009T123000Z.
+      const rawDate = item.seendate || "";
+      const publishedAt = /^\d{8}T\d{6}Z$/.test(rawDate)
+        ? `${rawDate.slice(0, 4)}-${rawDate.slice(4, 6)}-${rawDate.slice(6, 8)}T${rawDate.slice(9, 11)}:${rawDate.slice(11, 13)}:${rawDate.slice(13, 15)}Z`
+        : rawDate || new Date().toISOString();
+
+      return normalizeNewsArticle({
+        id: item.url || `${item.domain}-${item.title}-${publishedAt}`,
+        title: item.title || "G.R.O.A report",
+        description: "",
+        url: item.url || "#",
+        source: item.domain || "GDELT-indexed source",
+        publishedAt,
+        sources: [item.domain || "GDELT"],
+      });
+    });
+  } catch (error) {
+    console.warn("[GDELT] Fetch failed:", error);
+    return [];
+  }
+};
+
+export const fetchMultiSourceNews = async ({
+  query = "humanitarian OR climate OR security",
+  pageSize = 12,
+} = {}) => {
+  const [guardian, newsApi, gNews, gdelt] = await Promise.all([
+    fetchGuardianNews(query, Math.ceil(pageSize / 2)),
+    fetchNewsApiNews(query, Math.max(2, Math.floor(pageSize / 3))),
+    fetchGNewsArticles(query, Math.max(2, Math.floor(pageSize / 3))),
+    fetchGdeltNews(query, pageSize),
+  ]);
+
+  console.log("[G.R.O.A. News] Provider results:", {
+    guardian: guardian.length,
+    newsApi: newsApi.length,
+    gNews: gNews.length,
+    gdelt: gdelt.length,
+  });
+
+  const merged = dedupeNews([...gdelt, ...guardian, ...newsApi, ...gNews]);
+
+  if (!merged.length) {
+    return [];
+  }
+
+  return merged
+    .sort(
+      (a, b) =>
+        new Date(b.publishedAt || b.date || Date.now()) -
+        new Date(a.publishedAt || a.date || Date.now()),
+    )
+    .slice(0, pageSize)
+    .map((article) => ({
+      ...article,
+      summary:
+        article.summary ||
+        article.description ||
+        article.content ||
+        "No summary is available from this source. Open the original article for details.",
+      sources:
+        Array.isArray(article.sources) && article.sources.length
+          ? article.sources
+          : [article.source || "Public report"],
+    }));
 };

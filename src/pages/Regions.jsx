@@ -1031,6 +1031,7 @@ const Regions = () => {
           </div>
         </motion.div>
 
+        {/*
         {regions.length === 0 ? (
           <motion.div
             initial={{ opacity: 0 }}
@@ -1227,7 +1228,25 @@ const Regions = () => {
               </motion.div>
             ))}
           </div>
-        )}
+        )}*/}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="card glass"
+          style={{
+            padding: "3rem",
+            textAlign: "center",
+            color: "var(--text-secondary)",
+          }}
+        >
+          <FiGlobe
+            style={{ fontSize: "3rem", marginBottom: "1rem", opacity: 0.5 }}
+          />
+          <h3>Regions are currently being improved behind the scene</h3>
+          <p>
+            Please come back around 24 hours.
+          </p>
+        </motion.div>
 
         {/* Regional Intelligence Section */}
         <motion.div
